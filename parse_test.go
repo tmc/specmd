@@ -2,6 +2,8 @@ package openspec
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -79,6 +81,56 @@ The system MUST require a one-time code after password login.
 	}
 	if err := ValidateChange(change); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestParseSpecTestdata(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "specs", "auth", "spec.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	spec, err := ParseSpec("auth", f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateSpec(spec); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(spec.Requirements), 2; got != want {
+		t.Fatalf("len(Requirements) = %d, want %d", got, want)
+	}
+	if got, want := len(spec.Requirements[0].Scenarios), 2; got != want {
+		t.Fatalf("len(Scenarios) = %d, want %d", got, want)
+	}
+}
+
+func TestParseChangeTestdata(t *testing.T) {
+	proposal, err := os.Open(filepath.Join("testdata", "changes", "add-2fa", "proposal.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer proposal.Close()
+
+	specDelta, err := os.Open(filepath.Join("testdata", "changes", "add-2fa", "specs", "auth", "spec.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer specDelta.Close()
+
+	change, err := ParseChange("add-2fa", proposal, map[string]io.Reader{"auth": specDelta})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateChange(change); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(change.Deltas), 1; got != want {
+		t.Fatalf("len(Deltas) = %d, want %d", got, want)
+	}
+	if got, want := len(change.Deltas[0].Requirements[0].Scenarios), 2; got != want {
+		t.Fatalf("len(Scenarios) = %d, want %d", got, want)
 	}
 }
 
