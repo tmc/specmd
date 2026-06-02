@@ -41,6 +41,13 @@ type Delta struct {
 	Description  string
 	Requirements []Requirement
 	Renames      []Rename
+	Metadata     Metadata
+}
+
+// A Project is the parsed artifact content under an openspec directory.
+type Project struct {
+	Specs   []Spec
+	Changes []Change
 }
 
 // Rename records the old and new names for a renamed requirement.

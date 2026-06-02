@@ -3,6 +3,9 @@ package openspec
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"rsc.io/markdown"
@@ -13,21 +16,39 @@ func ParseSpec(name string, r io.Reader) (*Spec, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("parse spec: empty name")
 	}
-	spec, err := parseSpec(name, r)
+	spec, err := parseSpec(name, r, "")
 	if err != nil {
 		return nil, fmt.Errorf("parse spec: %w", err)
 	}
 	return spec, nil
 }
 
-func parseSpec(name string, r io.Reader) (*Spec, error) {
+// ParseSpecFile reads an OpenSpec spec file.
+func ParseSpecFile(path string) (*Spec, error) {
+	name := specNameFromPath(path)
+	if strings.TrimSpace(name) == "" {
+		return nil, fmt.Errorf("parse spec file: cannot infer spec name from %s", path)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("parse spec file: %w", err)
+	}
+	defer f.Close()
+	spec, err := parseSpec(name, f, path)
+	if err != nil {
+		return nil, fmt.Errorf("parse spec file: %w", err)
+	}
+	return spec, nil
+}
+
+func parseSpec(name string, r io.Reader, sourcePath string) (*Spec, error) {
 	doc, err := readMarkdown(r)
 	if err != nil {
 		return nil, err
 	}
 	spec := &Spec{
 		Name:     strings.TrimSpace(name),
-		Metadata: Metadata{Version: "1.0.0", Format: "openspec"},
+		Metadata: Metadata{Version: "1.0.0", Format: "openspec", SourcePath: sourcePath},
 	}
 	spec.Overview = sectionText(doc, "Purpose")
 	spec.Requirements = parseRequirements(sectionText(doc, "Requirements"))
@@ -39,14 +60,81 @@ func ParseChange(name string, proposal io.Reader, deltas map[string]io.Reader) (
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("parse change: empty name")
 	}
-	change, err := parseChange(name, proposal, deltas)
+	change, err := parseChange(name, proposal, "", deltas, nil)
 	if err != nil {
 		return nil, fmt.Errorf("parse change: %w", err)
 	}
 	return change, nil
 }
 
-func parseChange(name string, proposal io.Reader, deltas map[string]io.Reader) (*Change, error) {
+// ParseChangeDir reads an OpenSpec change directory.
+func ParseChangeDir(path string) (*Change, error) {
+	name := filepath.Base(filepath.Clean(path))
+	proposalPath := filepath.Join(path, "proposal.md")
+	proposal, err := os.Open(proposalPath)
+	if err != nil {
+		return nil, fmt.Errorf("parse change dir: %w", err)
+	}
+	defer proposal.Close()
+
+	specs, err := deltaSpecFiles(filepath.Join(path, "specs"))
+	if err != nil {
+		return nil, fmt.Errorf("parse change dir: %w", err)
+	}
+	readers := make(map[string]io.Reader, len(specs))
+	paths := make(map[string]string, len(specs))
+	files := make([]*os.File, 0, len(specs))
+	defer func() {
+		for _, f := range files {
+			f.Close()
+		}
+	}()
+	for _, spec := range specs {
+		f, err := os.Open(spec.path)
+		if err != nil {
+			return nil, fmt.Errorf("parse change dir: %w", err)
+		}
+		files = append(files, f)
+		readers[spec.name] = f
+		paths[spec.name] = spec.path
+	}
+	change, err := parseChange(name, proposal, proposalPath, readers, paths)
+	if err != nil {
+		return nil, fmt.Errorf("parse change dir: %w", err)
+	}
+	return change, nil
+}
+
+// ParseProject reads specs and changes from an openspec directory.
+func ParseProject(path string) (*Project, error) {
+	specFiles, err := specFiles(filepath.Join(path, "specs"))
+	if err != nil {
+		return nil, fmt.Errorf("parse project: %w", err)
+	}
+	var project Project
+	for _, file := range specFiles {
+		spec, err := ParseSpecFile(file.path)
+		if err != nil {
+			return nil, fmt.Errorf("parse project: %w", err)
+		}
+		project.Specs = append(project.Specs, *spec)
+	}
+
+	changeDirs, err := changeDirs(filepath.Join(path, "changes"))
+	if err != nil {
+		return nil, fmt.Errorf("parse project: %w", err)
+	}
+	for _, dir := range changeDirs {
+		change, err := ParseChangeDir(dir)
+		if err != nil {
+			return nil, fmt.Errorf("parse project: %w", err)
+		}
+		project.Changes = append(project.Changes, *change)
+	}
+	return &project, nil
+}
+
+func parseChange(name string, proposal io.Reader, sourcePath string, deltas map[string]io.Reader, deltaPaths map[string]string) (*Change, error) {
 	doc, err := readMarkdown(proposal)
 	if err != nil {
 		return nil, err
@@ -55,14 +143,16 @@ func parseChange(name string, proposal io.Reader, deltas map[string]io.Reader) (
 		Name:        strings.TrimSpace(name),
 		Why:         sectionText(doc, "Why"),
 		WhatChanges: sectionText(doc, "What Changes"),
-		Metadata:    Metadata{Version: "1.0.0", Format: "openspec-change"},
+		Metadata:    Metadata{Version: "1.0.0", Format: "openspec-change", SourcePath: sourcePath},
 	}
-	for spec, r := range deltas {
+	names := sortedKeys(deltas)
+	for _, spec := range names {
+		r := deltas[spec]
 		deltaDoc, err := readMarkdown(r)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", spec, err)
 		}
-		change.Deltas = append(change.Deltas, parseDeltas(spec, deltaDoc)...)
+		change.Deltas = append(change.Deltas, parseDeltas(spec, deltaDoc, deltaPaths[spec])...)
 	}
 	return change, nil
 }
@@ -193,7 +283,7 @@ func parseScenarios(lines []markdownLine) []Scenario {
 	return scenarios
 }
 
-func parseDeltas(spec string, lines []markdownLine) []Delta {
+func parseDeltas(spec string, lines []markdownLine, sourcePath string) []Delta {
 	var deltas []Delta
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
@@ -217,9 +307,86 @@ func parseDeltas(spec string, lines []markdownLine) []Delta {
 			Description:  description,
 			Requirements: reqs,
 			Renames:      renames,
+			Metadata:     Metadata{SourcePath: sourcePath},
 		})
 	}
 	return deltas
+}
+
+type namedPath struct {
+	name string
+	path string
+}
+
+func specFiles(root string) ([]namedPath, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var files []namedPath
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(root, entry.Name(), "spec.md")
+		if _, err := os.Stat(path); err == nil {
+			files = append(files, namedPath{entry.Name(), path})
+		} else if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].name < files[j].name })
+	return files, nil
+}
+
+func deltaSpecFiles(root string) ([]namedPath, error) {
+	return specFiles(root)
+}
+
+func changeDirs(root string) ([]string, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var dirs []string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "archive" {
+			continue
+		}
+		path := filepath.Join(root, entry.Name())
+		if _, err := os.Stat(filepath.Join(path, "proposal.md")); err == nil {
+			dirs = append(dirs, path)
+		} else if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	sort.Strings(dirs)
+	return dirs, nil
+}
+
+func specNameFromPath(path string) string {
+	path = filepath.Clean(path)
+	if filepath.Base(path) == "spec.md" {
+		return filepath.Base(filepath.Dir(path))
+	}
+	base := filepath.Base(path)
+	ext := filepath.Ext(base)
+	return strings.TrimSuffix(base, ext)
+}
+
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func parseDeltaHeading(s string) (DeltaOperation, bool) {

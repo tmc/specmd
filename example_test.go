@@ -81,6 +81,22 @@ func ExampleParseChange() {
 	// Two-Factor Authentication
 }
 
+func ExampleParseProject() {
+	project, err := openspec.ParseProject(filepath.Join("testdata", "project", "openspec"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(len(project.Specs))
+	fmt.Println(project.Specs[0].Name)
+	fmt.Println(len(project.Changes))
+	fmt.Println(project.Changes[0].Name)
+	// Output:
+	// 2
+	// auth
+	// 2
+	// add-2fa
+}
+
 func ExampleValidateSpec() {
 	spec := &openspec.Spec{
 		Name:     "auth",

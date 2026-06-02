@@ -234,3 +234,53 @@ Rename the login requirement to a clearer authentication requirement.
 		t.Fatal(err)
 	}
 }
+
+func TestParseSpecFile(t *testing.T) {
+	path := filepath.Join("testdata", "project", "openspec", "specs", "auth", "spec.md")
+	spec, err := ParseSpecFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := spec.Name, "auth"; got != want {
+		t.Fatalf("Name = %q, want %q", got, want)
+	}
+	if got, want := spec.Metadata.SourcePath, path; got != want {
+		t.Fatalf("SourcePath = %q, want %q", got, want)
+	}
+}
+
+func TestParseChangeDir(t *testing.T) {
+	path := filepath.Join("testdata", "project", "openspec", "changes", "add-2fa")
+	change, err := ParseChangeDir(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := change.Name, "add-2fa"; got != want {
+		t.Fatalf("Name = %q, want %q", got, want)
+	}
+	if got, want := change.Metadata.SourcePath, filepath.Join(path, "proposal.md"); got != want {
+		t.Fatalf("SourcePath = %q, want %q", got, want)
+	}
+	if got, want := change.Deltas[0].Metadata.SourcePath, filepath.Join(path, "specs", "auth", "spec.md"); got != want {
+		t.Fatalf("Delta SourcePath = %q, want %q", got, want)
+	}
+}
+
+func TestParseProjectStableOrder(t *testing.T) {
+	project, err := ParseProject(filepath.Join("testdata", "project", "openspec"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(project.Specs), 2; got != want {
+		t.Fatalf("len(Specs) = %d, want %d", got, want)
+	}
+	if got, want := []string{project.Specs[0].Name, project.Specs[1].Name}, []string{"auth", "billing"}; got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("Specs = %q, want %q", got, want)
+	}
+	if got, want := len(project.Changes), 2; got != want {
+		t.Fatalf("len(Changes) = %d, want %d", got, want)
+	}
+	if got, want := []string{project.Changes[0].Name, project.Changes[1].Name}, []string{"add-2fa", "update-billing"}; got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("Changes = %q, want %q", got, want)
+	}
+}
