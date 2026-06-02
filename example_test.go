@@ -130,3 +130,22 @@ func ExampleValidateChange() {
 	fmt.Println(openspec.ValidateChange(change))
 	// Output: <nil>
 }
+
+func ExampleValidateSpecReport() {
+	spec := &openspec.Spec{
+		Name:     "auth",
+		Overview: "short",
+		Requirements: []openspec.Requirement{{
+			Text: "The system SHALL issue a token upon successful login.",
+			Scenarios: []openspec.Scenario{{
+				RawText: "- WHEN valid credentials are submitted\n- THEN a token is returned",
+			}},
+		}},
+	}
+	report := openspec.ValidateSpecReport(spec)
+	fmt.Println(report.Valid)
+	fmt.Println(report.Summary.Warnings)
+	// Output:
+	// true
+	// 1
+}
