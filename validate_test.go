@@ -105,6 +105,7 @@ func TestValidateSpecReport(t *testing.T) {
 }
 
 func TestValidateSpecReportBoundaries(t *testing.T) {
+	requirementPrefix := "The system SHALL "
 	tests := []struct {
 		name     string
 		overview string
@@ -123,9 +124,14 @@ func TestValidateSpecReportBoundaries(t *testing.T) {
 			want:     ValidationSummary{Warnings: 1},
 		},
 		{
-			name:     "long requirement is info",
+			name:     "requirement text exactly maximum",
 			overview: strings.Repeat("a", minPurposeLength),
-			text:     "The system SHALL " + strings.Repeat("preserve behavior ", 32),
+			text:     requirementPrefix + strings.Repeat("x", maxRequirementTextLength-len(requirementPrefix)),
+		},
+		{
+			name:     "requirement text one long is info",
+			overview: strings.Repeat("a", minPurposeLength),
+			text:     requirementPrefix + strings.Repeat("x", maxRequirementTextLength-len(requirementPrefix)+1),
 			want:     ValidationSummary{Info: 1},
 		},
 	}
@@ -227,6 +233,21 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 			},
 			want: ValidationSummary{Warnings: 1},
 		},
+		{
+			name: "deltas exactly maximum",
+			why:  strings.Repeat("w", minWhyLength),
+			edit: func(change *Change) {
+				change.Deltas = repeatDelta(validDelta, maxDeltasPerChange)
+			},
+		},
+		{
+			name: "deltas one too many is error",
+			why:  strings.Repeat("w", minWhyLength),
+			edit: func(change *Change) {
+				change.Deltas = repeatDelta(validDelta, maxDeltasPerChange+1)
+			},
+			want: ValidationSummary{Errors: 1},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -245,4 +266,12 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 			}
 		})
 	}
+}
+
+func repeatDelta(delta Delta, n int) []Delta {
+	deltas := make([]Delta, n)
+	for i := range deltas {
+		deltas[i] = delta
+	}
+	return deltas
 }

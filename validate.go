@@ -19,9 +19,9 @@ const (
 type ValidationLevel string
 
 const (
-	LevelError   ValidationLevel = "ERROR"
-	LevelWarning ValidationLevel = "WARNING"
-	LevelInfo    ValidationLevel = "INFO"
+	ValidationLevelError   ValidationLevel = "ERROR"
+	ValidationLevelWarning ValidationLevel = "WARNING"
+	ValidationLevelInfo    ValidationLevel = "INFO"
 )
 
 // ValidationIssue reports one validation problem or advisory.
@@ -73,19 +73,19 @@ func ValidateSpec(spec *Spec) error {
 // ValidateSpecReport checks an OpenSpec spec and returns errors plus warnings.
 func ValidateSpecReport(spec *Spec) ValidationReport {
 	if spec == nil {
-		return validationReport([]ValidationIssue{{LevelError, "spec", "cannot be nil"}})
+		return validationReport([]ValidationIssue{{ValidationLevelError, "spec", "cannot be nil"}})
 	}
 	var issues []ValidationIssue
 	if strings.TrimSpace(spec.Name) == "" {
-		issues = append(issues, ValidationIssue{LevelError, "name", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "name", "cannot be empty"})
 	}
 	if strings.TrimSpace(spec.Overview) == "" {
-		issues = append(issues, ValidationIssue{LevelError, "overview", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "overview", "cannot be empty"})
 	} else if len(spec.Overview) < minPurposeLength {
-		issues = append(issues, ValidationIssue{LevelWarning, "overview", fmt.Sprintf("purpose section is too brief (less than %d characters)", minPurposeLength)})
+		issues = append(issues, ValidationIssue{ValidationLevelWarning, "overview", fmt.Sprintf("purpose section is too brief (less than %d characters)", minPurposeLength)})
 	}
 	if len(spec.Requirements) == 0 {
-		issues = append(issues, ValidationIssue{LevelError, "requirements", "must have at least one requirement"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "requirements", "must have at least one requirement"})
 	}
 	for i := range spec.Requirements {
 		issues = append(issues, validateRequirementIssues(fmt.Sprintf("requirements[%d]", i), spec.Requirements[i])...)
@@ -107,27 +107,27 @@ func ValidateChange(change *Change) error {
 // ValidateChangeReport checks an OpenSpec change and returns errors plus warnings.
 func ValidateChangeReport(change *Change) ValidationReport {
 	if change == nil {
-		return validationReport([]ValidationIssue{{LevelError, "change", "cannot be nil"}})
+		return validationReport([]ValidationIssue{{ValidationLevelError, "change", "cannot be nil"}})
 	}
 	var issues []ValidationIssue
 	if strings.TrimSpace(change.Name) == "" {
-		issues = append(issues, ValidationIssue{LevelError, "name", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "name", "cannot be empty"})
 	}
 	n := len(strings.TrimSpace(change.Why))
 	if n < minWhyLength {
-		issues = append(issues, ValidationIssue{LevelError, "why", fmt.Sprintf("must be at least %d characters", minWhyLength)})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "why", fmt.Sprintf("must be at least %d characters", minWhyLength)})
 	}
 	if n > maxWhyLength {
-		issues = append(issues, ValidationIssue{LevelError, "why", fmt.Sprintf("must not exceed %d characters", maxWhyLength)})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "why", fmt.Sprintf("must not exceed %d characters", maxWhyLength)})
 	}
 	if strings.TrimSpace(change.WhatChanges) == "" {
-		issues = append(issues, ValidationIssue{LevelError, "whatChanges", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "whatChanges", "cannot be empty"})
 	}
 	if len(change.Deltas) == 0 {
-		issues = append(issues, ValidationIssue{LevelError, "deltas", "must have at least one delta"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "deltas", "must have at least one delta"})
 	}
 	if len(change.Deltas) > maxDeltasPerChange {
-		issues = append(issues, ValidationIssue{LevelError, "deltas", fmt.Sprintf("must not exceed %d deltas", maxDeltasPerChange)})
+		issues = append(issues, ValidationIssue{ValidationLevelError, "deltas", fmt.Sprintf("must not exceed %d deltas", maxDeltasPerChange)})
 	}
 	for i := range change.Deltas {
 		issues = append(issues, validateDeltaIssues(fmt.Sprintf("deltas[%d]", i), change.Deltas[i])...)
@@ -138,30 +138,30 @@ func ValidateChangeReport(change *Change) ValidationReport {
 func validateDeltaIssues(path string, delta Delta) []ValidationIssue {
 	var issues []ValidationIssue
 	if strings.TrimSpace(delta.Spec) == "" {
-		issues = append(issues, ValidationIssue{LevelError, path + ".spec", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, path + ".spec", "cannot be empty"})
 	}
 	switch delta.Operation {
 	case Added, Modified, Removed, Renamed:
 	default:
-		issues = append(issues, ValidationIssue{LevelError, path + ".operation", "must be ADDED, MODIFIED, REMOVED, or RENAMED"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, path + ".operation", "must be ADDED, MODIFIED, REMOVED, or RENAMED"})
 	}
 	if strings.TrimSpace(delta.Description) == "" {
-		issues = append(issues, ValidationIssue{LevelError, path + ".description", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, path + ".description", "cannot be empty"})
 	} else if len(delta.Description) < minDeltaDescriptionLength {
-		issues = append(issues, ValidationIssue{LevelWarning, path + ".description", "delta description is too brief"})
+		issues = append(issues, ValidationIssue{ValidationLevelWarning, path + ".description", "delta description is too brief"})
 	}
 	if (delta.Operation == Added || delta.Operation == Modified) && len(delta.Requirements) == 0 {
-		issues = append(issues, ValidationIssue{LevelWarning, path + ".requirements", string(delta.Operation) + " delta should include requirements"})
+		issues = append(issues, ValidationIssue{ValidationLevelWarning, path + ".requirements", string(delta.Operation) + " delta should include requirements"})
 	}
 	for i := range delta.Requirements {
 		issues = append(issues, validateRequirementIssues(fmt.Sprintf("%s.requirements[%d]", path, i), delta.Requirements[i])...)
 	}
 	for i, rename := range delta.Renames {
 		if strings.TrimSpace(rename.From) == "" {
-			issues = append(issues, ValidationIssue{LevelError, fmt.Sprintf("%s.renames[%d].from", path, i), "cannot be empty"})
+			issues = append(issues, ValidationIssue{ValidationLevelError, fmt.Sprintf("%s.renames[%d].from", path, i), "cannot be empty"})
 		}
 		if strings.TrimSpace(rename.To) == "" {
-			issues = append(issues, ValidationIssue{LevelError, fmt.Sprintf("%s.renames[%d].to", path, i), "cannot be empty"})
+			issues = append(issues, ValidationIssue{ValidationLevelError, fmt.Sprintf("%s.renames[%d].to", path, i), "cannot be empty"})
 		}
 	}
 	return issues
@@ -170,20 +170,20 @@ func validateDeltaIssues(path string, delta Delta) []ValidationIssue {
 func validateRequirementIssues(path string, req Requirement) []ValidationIssue {
 	var issues []ValidationIssue
 	if strings.TrimSpace(req.Text) == "" {
-		issues = append(issues, ValidationIssue{LevelError, path + ".text", "cannot be empty"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, path + ".text", "cannot be empty"})
 	}
 	if !strings.Contains(req.Text, "SHALL") && !strings.Contains(req.Text, "MUST") {
-		issues = append(issues, ValidationIssue{LevelError, path + ".text", "must contain SHALL or MUST keyword"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, path + ".text", "must contain SHALL or MUST keyword"})
 	}
 	if len(req.Text) > maxRequirementTextLength {
-		issues = append(issues, ValidationIssue{LevelInfo, path, fmt.Sprintf("requirement text is very long (>%d characters)", maxRequirementTextLength)})
+		issues = append(issues, ValidationIssue{ValidationLevelInfo, path, fmt.Sprintf("requirement text is very long (>%d characters)", maxRequirementTextLength)})
 	}
 	if len(req.Scenarios) == 0 {
-		issues = append(issues, ValidationIssue{LevelError, path + ".scenarios", "must have at least one scenario"})
+		issues = append(issues, ValidationIssue{ValidationLevelError, path + ".scenarios", "must have at least one scenario"})
 	}
 	for i, scenario := range req.Scenarios {
 		if strings.TrimSpace(scenario.RawText) == "" {
-			issues = append(issues, ValidationIssue{LevelError, fmt.Sprintf("%s.scenarios[%d]", path, i), "cannot be empty"})
+			issues = append(issues, ValidationIssue{ValidationLevelError, fmt.Sprintf("%s.scenarios[%d]", path, i), "cannot be empty"})
 		}
 	}
 	return issues
@@ -193,11 +193,11 @@ func validationReport(issues []ValidationIssue) ValidationReport {
 	var summary ValidationSummary
 	for _, issue := range issues {
 		switch issue.Level {
-		case LevelError:
+		case ValidationLevelError:
 			summary.Errors++
-		case LevelWarning:
+		case ValidationLevelWarning:
 			summary.Warnings++
-		case LevelInfo:
+		case ValidationLevelInfo:
 			summary.Info++
 		}
 	}
@@ -208,7 +208,7 @@ func validationReport(issues []ValidationIssue) ValidationReport {
 func (r ValidationReport) Err() error {
 	var errs []error
 	for _, issue := range r.Issues {
-		if issue.Level == LevelError {
+		if issue.Level == ValidationLevelError {
 			errs = append(errs, ValidationError{issue.Path, errors.New(issue.Message)})
 		}
 	}
