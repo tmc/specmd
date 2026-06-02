@@ -104,6 +104,52 @@ func TestValidateSpecReport(t *testing.T) {
 	}
 }
 
+func TestValidateSpecReportBoundaries(t *testing.T) {
+	tests := []struct {
+		name     string
+		overview string
+		text     string
+		want     ValidationSummary
+	}{
+		{
+			name:     "purpose exactly minimum",
+			overview: strings.Repeat("a", minPurposeLength),
+			text:     "The system SHALL issue a token.",
+		},
+		{
+			name:     "purpose one short warns",
+			overview: strings.Repeat("a", minPurposeLength-1),
+			text:     "The system SHALL issue a token.",
+			want:     ValidationSummary{Warnings: 1},
+		},
+		{
+			name:     "long requirement is info",
+			overview: strings.Repeat("a", minPurposeLength),
+			text:     "The system SHALL " + strings.Repeat("preserve behavior ", 32),
+			want:     ValidationSummary{Info: 1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec := &Spec{
+				Name:     "auth",
+				Overview: tt.overview,
+				Requirements: []Requirement{{
+					Text:      tt.text,
+					Scenarios: []Scenario{{RawText: "- WHEN login succeeds\n- THEN a token is returned"}},
+				}},
+			}
+			report := ValidateSpecReport(spec)
+			if report.Summary != tt.want {
+				t.Fatalf("Summary = %+v, want %+v; issues: %+v", report.Summary, tt.want, report.Issues)
+			}
+			if err := report.Err(); err != nil {
+				t.Fatalf("Err() = %v", err)
+			}
+		})
+	}
+}
+
 func TestValidateChangeReport(t *testing.T) {
 	change := &Change{
 		Name:        "add-empty",
@@ -127,5 +173,76 @@ func TestValidateChangeReport(t *testing.T) {
 	}
 	if err := ValidateChange(change); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestValidateChangeReportBoundaries(t *testing.T) {
+	validDelta := Delta{
+		Spec:        "auth",
+		Operation:   Renamed,
+		Description: strings.Repeat("d", minDeltaDescriptionLength),
+		Renames:     []Rename{{From: "Login", To: "User Authentication"}},
+	}
+	tests := []struct {
+		name string
+		why  string
+		edit func(*Change)
+		want ValidationSummary
+	}{
+		{
+			name: "why exactly minimum",
+			why:  strings.Repeat("w", minWhyLength),
+		},
+		{
+			name: "why one short is error",
+			why:  strings.Repeat("w", minWhyLength-1),
+			want: ValidationSummary{Errors: 1},
+		},
+		{
+			name: "why exactly maximum",
+			why:  strings.Repeat("w", maxWhyLength),
+		},
+		{
+			name: "why one long is error",
+			why:  strings.Repeat("w", maxWhyLength+1),
+			want: ValidationSummary{Errors: 1},
+		},
+		{
+			name: "delta description one short warns",
+			why:  strings.Repeat("w", minWhyLength),
+			edit: func(change *Change) {
+				change.Deltas[0].Description = strings.Repeat("d", minDeltaDescriptionLength-1)
+			},
+			want: ValidationSummary{Warnings: 1},
+		},
+		{
+			name: "missing added requirements warns",
+			why:  strings.Repeat("w", minWhyLength),
+			edit: func(change *Change) {
+				change.Deltas[0] = Delta{
+					Spec:        "auth",
+					Operation:   Added,
+					Description: strings.Repeat("d", minDeltaDescriptionLength),
+				}
+			},
+			want: ValidationSummary{Warnings: 1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			change := &Change{
+				Name:        "change",
+				Why:         tt.why,
+				WhatChanges: "Rename the login requirement.",
+				Deltas:      []Delta{validDelta},
+			}
+			if tt.edit != nil {
+				tt.edit(change)
+			}
+			report := ValidateChangeReport(change)
+			if report.Summary != tt.want {
+				t.Fatalf("Summary = %+v, want %+v; issues: %+v", report.Summary, tt.want, report.Issues)
+			}
+		})
 	}
 }
