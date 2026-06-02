@@ -1,10 +1,11 @@
 package openspec
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"strings"
+
+	"rsc.io/markdown"
 )
 
 // ParseSpec reads an OpenSpec spec Markdown document.
@@ -73,29 +74,55 @@ type markdownLine struct {
 }
 
 func readMarkdown(r io.Reader) ([]markdownLine, error) {
-	var lines []markdownLine
-	scan := bufio.NewScanner(r)
-	for scan.Scan() {
-		raw := scan.Text()
-		level, text := heading(raw)
-		lines = append(lines, markdownLine{level: level, text: text, raw: raw})
-	}
-	if err := scan.Err(); err != nil {
+	b, err := io.ReadAll(r)
+	if err != nil {
 		return nil, err
 	}
+	text := strings.ReplaceAll(string(b), "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	raw := strings.Split(text, "\n")
+	if len(raw) > 0 && raw[len(raw)-1] == "" {
+		raw = raw[:len(raw)-1]
+	}
+
+	lines := make([]markdownLine, len(raw))
+	for i, line := range raw {
+		lines[i].raw = line
+	}
+	doc := new(markdown.Parser).Parse(text)
+	for _, h := range headings(doc.Blocks) {
+		line := h.StartLine - 1
+		if line < 0 || line >= len(lines) {
+			continue
+		}
+		lines[line].level = h.Level
+		lines[line].text = strings.TrimSpace(markdown.Format(h.Text))
+	}
+
 	return lines, nil
 }
 
-func heading(s string) (int, string) {
-	s = strings.TrimSpace(s)
-	n := 0
-	for n < len(s) && s[n] == '#' {
-		n++
+func headings(blocks []markdown.Block) []*markdown.Heading {
+	var out []*markdown.Heading
+	for _, block := range blocks {
+		switch block := block.(type) {
+		case *markdown.Heading:
+			out = append(out, block)
+		case *markdown.Document:
+			out = append(out, headings(block.Blocks)...)
+		case *markdown.Item:
+			out = append(out, headings(block.Blocks)...)
+		case *markdown.List:
+			for _, item := range block.Items {
+				if item, ok := item.(*markdown.Item); ok {
+					out = append(out, headings(item.Blocks)...)
+				}
+			}
+		case *markdown.Quote:
+			out = append(out, headings(block.Blocks)...)
+		}
 	}
-	if n == 0 || n == len(s) || s[n] != ' ' {
-		return 0, ""
-	}
-	return n, strings.TrimSpace(s[n+1:])
+	return out
 }
 
 func sectionText(lines []markdownLine, name string) string {

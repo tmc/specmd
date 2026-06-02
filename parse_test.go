@@ -134,6 +134,70 @@ func TestParseChangeTestdata(t *testing.T) {
 	}
 }
 
+func TestParseSpecIgnoresFencedHeadings(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "specs", "auth", "spec-with-code.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	spec, err := ParseSpec("auth", f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateSpec(spec); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(spec.Requirements), 1; got != want {
+		t.Fatalf("len(Requirements) = %d, want %d", got, want)
+	}
+	if got, want := spec.Requirements[0].Name, "Parsed Outside Code Fence"; got != want {
+		t.Fatalf("Requirement.Name = %q, want %q", got, want)
+	}
+}
+
+func TestParseDeltaOperationsTestdata(t *testing.T) {
+	tests := []struct {
+		name      string
+		changeID  string
+		operation DeltaOperation
+	}{
+		{"added", "add-2fa", Added},
+		{"modified", "modify-session", Modified},
+		{"removed", "remove-legacy-login", Removed},
+		{"renamed", "rename-login", Renamed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proposal, err := os.Open(filepath.Join("testdata", "changes", tt.changeID, "proposal.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer proposal.Close()
+
+			specDelta, err := os.Open(filepath.Join("testdata", "changes", tt.changeID, "specs", "auth", "spec.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer specDelta.Close()
+
+			change, err := ParseChange(tt.changeID, proposal, map[string]io.Reader{"auth": specDelta})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := ValidateChange(change); err != nil {
+				t.Fatal(err)
+			}
+			if got, want := len(change.Deltas), 1; got != want {
+				t.Fatalf("len(Deltas) = %d, want %d", got, want)
+			}
+			if got := change.Deltas[0].Operation; got != tt.operation {
+				t.Fatalf("Operation = %q, want %q", got, tt.operation)
+			}
+		})
+	}
+}
+
 func TestParseDeltaRenames(t *testing.T) {
 	change, err := ParseChange("rename-auth", strings.NewReader(`# Proposal
 

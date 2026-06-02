@@ -58,3 +58,19 @@ func TestValidateSpec(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSpecAllowsSoftWarningThresholds(t *testing.T) {
+	spec := &Spec{
+		Name:     "auth",
+		Overview: "short",
+		Requirements: []Requirement{{
+			Text: "The system SHALL " + strings.Repeat("preserve documented behavior ", 30),
+			Scenarios: []Scenario{{
+				RawText: "- WHEN behavior is documented\n- THEN validation accepts the spec",
+			}},
+		}},
+	}
+	if err := ValidateSpec(spec); err != nil {
+		t.Fatal(err)
+	}
+}
