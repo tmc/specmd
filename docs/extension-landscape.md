@@ -65,7 +65,7 @@ CLI/workflow plumbing unless a caller asks to inspect those files as artifacts.
 | Project config | `openspec/config.yaml` schema/context/rules | Not parsed | Workflow/CLI concern | Do not add yet |
 | Custom schemas | `openspec/schemas/<name>/schema.yaml` | Not parsed | Workflow/CLI concern | Add only as discovery refs if requested |
 | Extension artifacts | No core arbitrary fields | `docs/extensions.md` convention | No parsed extension refs | Next minimal slice could discover refs |
-| OOUX | Not upstream | Design only | No committed format | Keep typed design, no parser yet |
+| OOUX | Not upstream | Survey only | No committed format | Discover as opaque extension first |
 
 ## Markdown Schema Patterns
 
@@ -142,7 +142,8 @@ openspec/extensions/ooux/model.md
 openspec/changes/<id>/extensions/ooux.md
 ```
 
-A protobuf-friendly Go shape can stay dependency-free:
+A possible protobuf-friendly Go shape, outside the core package, can stay
+dependency-free:
 
 ```go
 type OOUXModel struct {
@@ -169,7 +170,7 @@ become core OpenSpec types.
 
 | Framework | Fit | Recommendation |
 | --- | --- | --- |
-| OOUX / ORCA | Domain model before behavior specs | First typed extension candidate |
+| OOUX / ORCA | Domain model before behavior specs | Discover first; type only outside core after fixtures |
 | EventStorming | Event/process discovery | Generic extension first; typed support only after fixtures |
 | Domain Storytelling | Actors and work steps | Generic extension first |
 | Bounded Context / Context Map | DDD boundaries and integrations | Generic or typed context extension |
@@ -195,22 +196,16 @@ type ExtensionRef struct {
 }
 ```
 
-If callers need parsed typed extensions, use an artifact wrapper:
+If callers later need parsed typed extensions, keep that API outside the core
+parser until the format is backed by fixtures:
 
 ```go
-type ExtensionArtifact struct {
-	Name     string
-	Metadata Metadata
-	Payload  ExtensionPayload
-}
-
-type ExtensionPayload struct {
-	OOUX *OOUXModel
+type OOUXArtifact struct {
+	Name       string
+	SourcePath string
+	Model      OOUXModel
 }
 ```
-
-Only one payload pointer should be non-nil. That invariant belongs in
-extension validation, not in the parser.
 
 Parsing rules:
 
