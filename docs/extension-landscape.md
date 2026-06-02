@@ -64,7 +64,7 @@ CLI/workflow plumbing unless a caller asks to inspect those files as artifacts.
 | Validation levels | error, warning, info; strict mode optional | reports distinguish levels; wrappers fail on errors | No strict wrapper | Avoid until needed |
 | Project config | `openspec/config.yaml` schema/context/rules | Not parsed | Workflow/CLI concern | Do not add yet |
 | Custom schemas | `openspec/schemas/<name>/schema.yaml` | Not parsed | Workflow/CLI concern | Add only as discovery refs if requested |
-| Extension artifacts | No core arbitrary fields | `docs/extensions.md` convention | No parsed extension refs | Next minimal slice could discover refs |
+| Extension artifacts | No core arbitrary fields | `ExtensionRef` discovery | Payloads are not parsed | Keep discovery-only in core |
 | OOUX | Not upstream | Survey only | No committed format | Discover as opaque extension first |
 
 ## Markdown Schema Patterns
@@ -209,19 +209,16 @@ type OOUXArtifact struct {
 
 Parsing rules:
 
-- discover `openspec/extensions/<name>/*.md` in sorted order;
-- discover `openspec/changes/<id>/extensions/*.md` in sorted order;
+- discover `openspec/extensions/**/*.md` in sorted order;
+- discover `openspec/changes/<id>/extensions/**/*.md` in sorted order;
 - preserve `SourcePath`;
-- ignore unknown extension files in core parse APIs unless an extension
-  discovery API is added;
+- preserve unknown extension files as `ExtensionRef` values;
 - warn, do not fail, for malformed optional extension artifacts unless the
   caller explicitly validates that extension.
 
-## Next Slice
+## Current Slice
 
-No public implementation is necessary now. The current package already has the
-core upstream-alignment features appropriate for a small Go library. The next
-minimal implementation, when needed, should be discovery-only:
+The core package implements discovery-only extension refs:
 
 ```go
 type ExtensionRef struct {
@@ -241,14 +238,23 @@ type Change struct {
 }
 ```
 
-That slice would require fixture-backed examples for:
+Fixture-backed examples cover:
 
 ```text
+testdata/project/openspec/extensions/contexts/map.md
+testdata/project/openspec/extensions/domain-story/model.md
+testdata/project/openspec/extensions/eventstorm/model.md
+testdata/project/openspec/extensions/example-mapping/auth.md
+testdata/project/openspec/extensions/jobs/stories.md
+testdata/project/openspec/extensions/journey/login.md
 testdata/project/openspec/extensions/ooux/model.md
+testdata/project/openspec/extensions/opportunity-tree/auth.md
+testdata/project/openspec/extensions/service-blueprint/login.md
 testdata/project/openspec/changes/add-2fa/extensions/ooux.md
+testdata/project/openspec/changes/update-billing/extensions/example-mapping.md
 ```
 
-Typed OOUX parsing should wait until those fixtures stabilize.
+Typed OOUX parsing should remain outside the core parser until callers need it.
 
 ## Non-Goals
 

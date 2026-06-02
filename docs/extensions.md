@@ -25,10 +25,10 @@ Extensions should be:
 - tolerant: unknown extension artifacts are preserved as paths or ignored by
   default, not treated as core validation failures.
 
-The core package should avoid a generic plugin registry until real extension
-formats need one. A registry invites a larger API than the current package
-needs and makes protobuf mapping harder. Extension discovery should come
-before typed extension parsing.
+The core package avoids a generic plugin registry. A registry invites a larger
+API than the current package needs and makes protobuf mapping harder. Extension
+discovery exists; typed extension parsing should come later, outside the core
+parser, after formats stabilize.
 
 ## Artifact Convention
 
@@ -66,9 +66,12 @@ type ExtensionRef struct {
 }
 ```
 
-That is enough when the package only needs to tell callers that extension
-artifacts exist. If the package later parses a concrete extension, use a typed
-artifact wrapper only after the file format is backed by fixtures:
+That is enough to tell callers that extension artifacts exist. `ParseProject`
+populates project-level refs from `openspec/extensions/**/*.md`; `ParseChangeDir`
+populates change-local refs from `openspec/changes/<id>/extensions/**/*.md`.
+
+If the package later parses a concrete extension, use a typed artifact wrapper
+only after the file format is backed by fixtures:
 
 ```go
 type ExtensionArtifact struct {
@@ -77,9 +80,9 @@ type ExtensionArtifact struct {
 }
 ```
 
-That shape intentionally remains discovery-only. A future typed parser can
-define its own payload type in a sibling package without forcing all callers to
-depend on it.
+The current shape intentionally remains discovery-only. A future typed parser
+can define its own payload type in a sibling package without forcing all
+callers to depend on it.
 
 ## OOUX
 

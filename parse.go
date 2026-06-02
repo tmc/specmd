@@ -102,6 +102,11 @@ func ParseChangeDir(path string) (*Change, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse change dir: %w", err)
 	}
+	extensions, err := extensionRefs(filepath.Join(path, "extensions"))
+	if err != nil {
+		return nil, fmt.Errorf("parse change dir: %w", err)
+	}
+	change.Extensions = extensions
 	return change, nil
 }
 
@@ -131,6 +136,11 @@ func ParseProject(path string) (*Project, error) {
 		}
 		project.Changes = append(project.Changes, *change)
 	}
+	extensions, err := extensionRefs(filepath.Join(path, "extensions"))
+	if err != nil {
+		return nil, fmt.Errorf("parse project: %w", err)
+	}
+	project.Extensions = extensions
 	return &project, nil
 }
 
@@ -368,6 +378,45 @@ func changeDirs(root string) ([]string, error) {
 	}
 	sort.Strings(dirs)
 	return dirs, nil
+}
+
+func extensionRefs(root string) ([]ExtensionRef, error) {
+	var refs []ExtensionRef
+	if err := walkExtensionRefs(root, "", &refs); err != nil {
+		return nil, err
+	}
+	sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
+	return refs, nil
+}
+
+func walkExtensionRefs(root, prefix string, refs *[]ExtensionRef) error {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	for _, entry := range entries {
+		path := filepath.Join(root, entry.Name())
+		name := entry.Name()
+		if prefix != "" {
+			name = prefix + "/" + name
+		}
+		if entry.IsDir() {
+			if err := walkExtensionRefs(path, name, refs); err != nil {
+				return err
+			}
+			continue
+		}
+		if filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+		name = strings.TrimSuffix(name, ".md")
+		*refs = append(*refs, ExtensionRef{Name: filepath.ToSlash(name), SourcePath: path})
+	}
+	return nil
 }
 
 func specNameFromPath(path string) string {

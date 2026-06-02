@@ -264,6 +264,15 @@ func TestParseChangeDir(t *testing.T) {
 	if got, want := change.Deltas[0].Metadata.SourcePath, filepath.Join(path, "specs", "auth", "spec.md"); got != want {
 		t.Fatalf("Delta SourcePath = %q, want %q", got, want)
 	}
+	if got, want := len(change.Extensions), 1; got != want {
+		t.Fatalf("len(Extensions) = %d, want %d", got, want)
+	}
+	if got, want := change.Extensions[0].Name, "ooux"; got != want {
+		t.Fatalf("Extension.Name = %q, want %q", got, want)
+	}
+	if got, want := change.Extensions[0].SourcePath, filepath.Join(path, "extensions", "ooux.md"); got != want {
+		t.Fatalf("Extension.SourcePath = %q, want %q", got, want)
+	}
 }
 
 func TestParseProjectStableOrder(t *testing.T) {
@@ -283,4 +292,54 @@ func TestParseProjectStableOrder(t *testing.T) {
 	if got, want := []string{project.Changes[0].Name, project.Changes[1].Name}, []string{"add-2fa", "update-billing"}; got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("Changes = %q, want %q", got, want)
 	}
+	if got, want := len(project.Extensions), 9; got != want {
+		t.Fatalf("len(Extensions) = %d, want %d", got, want)
+	}
+	gotExtensions := extensionNames(project.Extensions)
+	wantExtensions := []string{
+		"contexts/map",
+		"domain-story/model",
+		"eventstorm/model",
+		"example-mapping/auth",
+		"jobs/stories",
+		"journey/login",
+		"ooux/model",
+		"opportunity-tree/auth",
+		"service-blueprint/login",
+	}
+	if !sameStrings(gotExtensions, wantExtensions) {
+		t.Fatalf("Extensions = %q, want %q", gotExtensions, wantExtensions)
+	}
+	if got, want := project.Extensions[0].SourcePath, filepath.Join("testdata", "project", "openspec", "extensions", "contexts", "map.md"); got != want {
+		t.Fatalf("Extension SourcePath = %q, want %q", got, want)
+	}
+	if got, want := len(project.Changes[0].Extensions), 1; got != want {
+		t.Fatalf("len(add-2fa Extensions) = %d, want %d", got, want)
+	}
+	if got, want := project.Changes[0].Extensions[0].Name, "ooux"; got != want {
+		t.Fatalf("add-2fa Extension = %q, want %q", got, want)
+	}
+	if got, want := project.Changes[1].Extensions[0].Name, "example-mapping"; got != want {
+		t.Fatalf("update-billing Extension = %q, want %q", got, want)
+	}
+}
+
+func extensionNames(refs []ExtensionRef) []string {
+	names := make([]string, len(refs))
+	for i := range refs {
+		names[i] = refs[i].Name
+	}
+	return names
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

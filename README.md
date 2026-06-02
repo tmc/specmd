@@ -15,3 +15,17 @@ if err := openspec.ValidateSpec(spec); err != nil {
 	log.Fatal(err)
 }
 ```
+
+Project parsing reads the usual `openspec/specs/...` and
+`openspec/changes/...` layout and discovers extension Markdown files without
+parsing their contents:
+
+```go
+project, err := openspec.ParseProject("openspec")
+if err != nil {
+	log.Fatal(err)
+}
+for _, ref := range project.Extensions {
+	fmt.Println(ref.Name, ref.SourcePath)
+}
+```

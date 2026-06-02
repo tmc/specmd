@@ -14,6 +14,7 @@ type Change struct {
 	Why         string
 	WhatChanges string
 	Deltas      []Delta
+	Extensions  []ExtensionRef
 	Metadata    Metadata
 }
 
@@ -46,8 +47,15 @@ type Delta struct {
 
 // A Project is the parsed artifact content under an openspec directory.
 type Project struct {
-	Specs   []Spec
-	Changes []Change
+	Specs      []Spec
+	Changes    []Change
+	Extensions []ExtensionRef
+}
+
+// An ExtensionRef records one discovered extension artifact.
+type ExtensionRef struct {
+	Name       string
+	SourcePath string
 }
 
 // Rename records the old and new names for a renamed requirement.

@@ -53,6 +53,18 @@ func ExampleParseSpec() {
 	// User Authentication
 }
 
+func ExampleParseSpecFile() {
+	spec, err := openspec.ParseSpecFile(filepath.Join("testdata", "project", "openspec", "specs", "auth", "spec.md"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(spec.Name)
+	fmt.Println(filepath.Base(spec.Metadata.SourcePath))
+	// Output:
+	// auth
+	// spec.md
+}
+
 func ExampleParseChange() {
 	proposal, err := os.Open(filepath.Join("testdata", "changes", "add-2fa", "proposal.md"))
 	if err != nil {
@@ -81,6 +93,18 @@ func ExampleParseChange() {
 	// Two-Factor Authentication
 }
 
+func ExampleParseChangeDir() {
+	change, err := openspec.ParseChangeDir(filepath.Join("testdata", "project", "openspec", "changes", "add-2fa"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(change.Name)
+	fmt.Println(change.Extensions[0].Name)
+	// Output:
+	// add-2fa
+	// ooux
+}
+
 func ExampleParseProject() {
 	project, err := openspec.ParseProject(filepath.Join("testdata", "project", "openspec"))
 	if err != nil {
@@ -90,11 +114,35 @@ func ExampleParseProject() {
 	fmt.Println(project.Specs[0].Name)
 	fmt.Println(len(project.Changes))
 	fmt.Println(project.Changes[0].Name)
+	fmt.Println(project.Extensions[0].Name)
 	// Output:
 	// 2
 	// auth
 	// 2
 	// add-2fa
+	// contexts/map
+}
+
+func ExampleExtensionRef() {
+	project, err := openspec.ParseProject(filepath.Join("testdata", "project", "openspec"))
+	if err != nil {
+		panic(err)
+	}
+	for _, ref := range project.Extensions {
+		fmt.Println(ref.Name)
+	}
+	fmt.Println(project.Changes[0].Extensions[0].Name)
+	// Output:
+	// contexts/map
+	// domain-story/model
+	// eventstorm/model
+	// example-mapping/auth
+	// jobs/stories
+	// journey/login
+	// ooux/model
+	// opportunity-tree/auth
+	// service-blueprint/login
+	// ooux
 }
 
 func ExampleValidateSpec() {
