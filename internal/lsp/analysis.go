@@ -18,16 +18,7 @@ type heading struct {
 func analyze(uri, text string) []diagnostic {
 	var diags []diagnostic
 	heads := headings(text)
-	base := path.Base(uri)
-	ext := extensionName(uri)
-	switch {
-	case base == "spec.md" && strings.Contains(uri, "/openspec/specs/"):
-		diags = append(diags, requireSections(heads, "Purpose", "Requirements")...)
-	case base == "proposal.md" && strings.Contains(uri, "/openspec/changes/"):
-		diags = append(diags, requireSections(heads, "Why", "What Changes")...)
-	case ext != "":
-		diags = append(diags, extensionDiagnostics(ext, heads)...)
-	}
+	diags = append(diags, requireSections(heads, requiredSections(uri)...)...)
 	diags = append(diags, headingWhitespaceDiagnostics(text)...)
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Range.Start.Line != diags[j].Range.Start.Line {
@@ -36,6 +27,21 @@ func analyze(uri, text string) []diagnostic {
 		return diags[i].Message < diags[j].Message
 	})
 	return diags
+}
+
+func requiredSections(uri string) []string {
+	base := path.Base(uri)
+	ext := extensionName(uri)
+	switch {
+	case base == "spec.md" && strings.Contains(uri, "/openspec/specs/"):
+		return []string{"Purpose", "Requirements"}
+	case base == "proposal.md" && strings.Contains(uri, "/openspec/changes/"):
+		return []string{"Why", "What Changes"}
+	case ext != "":
+		return extensionRequiredSections(ext)
+	default:
+		return nil
+	}
 }
 
 func headings(text string) []heading {
@@ -80,27 +86,31 @@ func requireSections(heads []heading, names ...string) []diagnostic {
 }
 
 func extensionDiagnostics(name string, heads []heading) []diagnostic {
+	return requireSections(heads, extensionRequiredSections(name)...)
+}
+
+func extensionRequiredSections(name string) []string {
 	switch name {
 	case "ooux":
-		return requireSections(heads, "Objects")
+		return []string{"Objects"}
 	case "eventstorm":
-		return requireSections(heads, "Events", "Commands", "Actors")
+		return []string{"Events", "Commands", "Actors"}
 	case "contexts":
-		return requireSections(heads, "Contexts", "Relationships")
+		return []string{"Contexts", "Relationships"}
 	case "domain-story":
-		return requireSections(heads, "Actors", "Story")
+		return []string{"Actors", "Story"}
 	case "example-mapping":
-		return requireSections(heads, "Story", "Rules", "Examples", "Questions")
+		return []string{"Story", "Rules", "Examples", "Questions"}
 	case "jobs":
-		return requireSections(heads, "Stories")
+		return []string{"Stories"}
 	case "journey":
-		return requireSections(heads, "Actor", "Scenario", "Stages")
+		return []string{"Actor", "Scenario", "Stages"}
 	case "opportunity-tree":
-		return requireSections(heads, "Outcome", "Opportunities", "Solutions", "Experiments")
+		return []string{"Outcome", "Opportunities", "Solutions", "Experiments"}
 	case "service-blueprint":
-		return requireSections(heads, "Blueprint")
+		return []string{"Blueprint"}
 	case "stratmd":
-		return requireSections(heads, "Changelog")
+		return []string{"Changelog"}
 	case "magi":
 		return nil
 	default:
@@ -155,8 +165,16 @@ func symbols(text string) []documentSymbol {
 	return out
 }
 
-func completions(uri string) []completionItem {
-	items := []completionItem{
+func completions(uri, text string) []completionItem {
+	var items []completionItem
+	labels := make(map[string]bool)
+	seen := presentSections(headings(text))
+	for _, sec := range requiredSections(uri) {
+		if !seen[strings.ToLower(sec)] {
+			items = appendCompletion(items, labels, completionItem{Label: "## " + sec, Kind: 15, Detail: "missing required OpenSpec section", InsertText: "## " + sec + "\n"})
+		}
+	}
+	for _, item := range []completionItem{
 		{Label: "## Purpose", Kind: 15, Detail: "OpenSpec spec section", InsertText: "## Purpose\n"},
 		{Label: "## Requirements", Kind: 15, Detail: "OpenSpec spec section", InsertText: "## Requirements\n"},
 		{Label: "### Requirement:", Kind: 15, Detail: "OpenSpec requirement", InsertText: "### Requirement: "},
@@ -165,11 +183,31 @@ func completions(uri string) []completionItem {
 		{Label: "## MODIFIED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## MODIFIED Requirements\n"},
 		{Label: "## REMOVED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## REMOVED Requirements\n"},
 		{Label: "## RENAMED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## RENAMED Requirements\n"},
+	} {
+		items = appendCompletion(items, labels, item)
 	}
 	for _, sec := range extensionSections(extensionName(uri)) {
-		items = append(items, completionItem{Label: "## " + sec, Kind: 15, Detail: "OpenSpec extension section", InsertText: "## " + sec + "\n"})
+		items = appendCompletion(items, labels, completionItem{Label: "## " + sec, Kind: 15, Detail: "OpenSpec extension section", InsertText: "## " + sec + "\n"})
 	}
 	return items
+}
+
+func appendCompletion(items []completionItem, labels map[string]bool, item completionItem) []completionItem {
+	if labels[item.Label] {
+		return items
+	}
+	labels[item.Label] = true
+	return append(items, item)
+}
+
+func presentSections(heads []heading) map[string]bool {
+	seen := make(map[string]bool)
+	for _, h := range heads {
+		if h.Level == 2 {
+			seen[strings.ToLower(h.Text)] = true
+		}
+	}
+	return seen
 }
 
 func extensionSections(name string) []string {
@@ -220,4 +258,41 @@ func hoverFor(uri string) string {
 	default:
 		return "OpenSpec Markdown document."
 	}
+}
+
+func hoverAt(uri, text string, pos position) string {
+	for _, h := range headings(text) {
+		if h.Line == pos.Line {
+			if s := sectionHover(uri, h.Text); s != "" {
+				return s
+			}
+			return fmt.Sprintf("Markdown heading: %s.", h.Text)
+		}
+	}
+	return hoverFor(uri)
+}
+
+func sectionHover(uri, name string) string {
+	switch strings.ToLower(name) {
+	case "purpose":
+		return "Purpose describes why the OpenSpec capability exists."
+	case "requirements":
+		return "Requirements contain user-visible behavior and scenarios."
+	case "requirement:":
+		return "Requirement headings name one behavior contract."
+	case "scenario:":
+		return "Scenario headings describe concrete GIVEN/WHEN/THEN behavior."
+	}
+	for _, sec := range extensionSections(extensionName(uri)) {
+		if strings.EqualFold(name, sec) {
+			return "OpenSpec extension section: " + sec + "."
+		}
+	}
+	if strings.HasPrefix(strings.ToLower(name), "requirement:") {
+		return "Requirement headings name one behavior contract."
+	}
+	if strings.HasPrefix(strings.ToLower(name), "scenario:") {
+		return "Scenario headings describe concrete GIVEN/WHEN/THEN behavior."
+	}
+	return ""
 }

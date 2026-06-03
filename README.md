@@ -70,3 +70,6 @@ go run ./cmd/openspec-lsp
 It supports open/change/close text sync, diagnostics, document symbols,
 hover, and section-heading completions for OpenSpec specs, changes, and the
 extension fixture families documented under `docs/extension-landscape.md`.
+
+See `docs/editor-lsp.md` for Neovim setup, VS Code wrapper guidance, demo
+workspace files, and current LSP feature coverage.

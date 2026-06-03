@@ -39,11 +39,34 @@ func TestCompletionsForExtension(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.uri, func(t *testing.T) {
-			items := completions(tt.uri)
+			items := completions(tt.uri, "")
 			if !hasCompletion(items, tt.label) {
 				t.Fatalf("missing %s completion: %+v", tt.label, items)
 			}
 		})
+	}
+}
+
+func TestCompletionsPutMissingSectionsFirst(t *testing.T) {
+	items := completions("file:///repo/openspec/specs/auth/spec.md", "# Auth\n\n## Purpose\n")
+	if len(items) == 0 {
+		t.Fatal("no completions")
+	}
+	if got, want := items[0].Label, "## Requirements"; got != want {
+		t.Fatalf("first completion = %q, want %q", got, want)
+	}
+	if got, want := items[0].Detail, "missing required OpenSpec section"; got != want {
+		t.Fatalf("first detail = %q, want %q", got, want)
+	}
+}
+
+func TestHoverAtHeading(t *testing.T) {
+	text := "# Auth\n\n## Requirements\n\n### Requirement: Login\n"
+	if got, want := hoverAt("file:///repo/openspec/specs/auth/spec.md", text, position{Line: 2}), "Requirements contain user-visible behavior and scenarios."; got != want {
+		t.Fatalf("hover = %q, want %q", got, want)
+	}
+	if got, want := hoverAt("file:///repo/openspec/specs/auth/spec.md", text, position{Line: 4}), "Requirement headings name one behavior contract."; got != want {
+		t.Fatalf("hover = %q, want %q", got, want)
 	}
 }
 

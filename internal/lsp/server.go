@@ -98,13 +98,13 @@ func (s *Server) handle(req request) error {
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, completionList{})
 		}
-		return s.respond(req.ID, completionList{Items: completions(p.TextDocument.URI)})
+		return s.respond(req.ID, completionList{Items: completions(p.TextDocument.URI, s.docs[p.TextDocument.URI])})
 	case "textDocument/hover":
 		var p textDocumentPositionParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, nil)
 		}
-		return s.respond(req.ID, hover{Contents: markupContent{Kind: "markdown", Value: hoverFor(p.TextDocument.URI)}})
+		return s.respond(req.ID, hover{Contents: markupContent{Kind: "markdown", Value: hoverAt(p.TextDocument.URI, s.docs[p.TextDocument.URI], p.Position)}})
 	default:
 		if len(req.ID) == 0 {
 			return nil
