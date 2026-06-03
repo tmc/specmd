@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const maxMessageSize = 16 << 20
+
 // Server is a small stdio Language Server Protocol implementation for
 // OpenSpec Markdown documents.
 type Server struct {
@@ -175,6 +177,9 @@ func readMessage(r *bufio.Reader) ([]byte, error) {
 	}
 	if length == 0 {
 		return nil, fmt.Errorf("missing content length")
+	}
+	if length < 0 || length > maxMessageSize {
+		return nil, fmt.Errorf("content length too large")
 	}
 	msg := make([]byte, length)
 	if _, err := io.ReadFull(r, msg); err != nil {

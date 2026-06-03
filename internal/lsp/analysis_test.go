@@ -149,6 +149,13 @@ func TestSymbols(t *testing.T) {
 	}
 }
 
+func TestSymbolsUseUTF16Ranges(t *testing.T) {
+	syms := symbols("# 🔐 Auth\n")
+	if got, want := syms[0].Range.End.Character, 9; got != want {
+		t.Fatalf("End.Character = %d, want %d", got, want)
+	}
+}
+
 func hasCompletion(items []completionItem, label string) bool {
 	_, ok := completionByLabel(items, label)
 	return ok

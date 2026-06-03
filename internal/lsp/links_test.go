@@ -55,3 +55,13 @@ func TestWikiLinksParseAliasesAndLocalHeadings(t *testing.T) {
 		t.Fatalf("second doc = %q, want OOUX model", links[1].Target.Doc)
 	}
 }
+
+func TestWikiLinkRangesUseUTF16(t *testing.T) {
+	links := wikiLinks("🔐 see [[Context map]].\n")
+	if len(links) != 1 {
+		t.Fatalf("len(wikiLinks) = %d, want 1", len(links))
+	}
+	if got, want := links[0].Range.Start.Character, 7; got != want {
+		t.Fatalf("Start.Character = %d, want %d", got, want)
+	}
+}

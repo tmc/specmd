@@ -19,6 +19,7 @@ type heading struct {
 	Level int
 	Text  string
 	Line  int
+	End   int
 }
 
 func analyze(uri, text string) []diagnostic {
@@ -69,7 +70,8 @@ func headings(text string) []heading {
 		if n == 0 || n > 6 || n >= len(line) || line[n] != ' ' {
 			continue
 		}
-		out = append(out, heading{Level: n, Text: strings.TrimSpace(line[n+1:]), Line: i})
+		end := len(strings.TrimRight(line, " \t\r"))
+		out = append(out, heading{Level: n, Text: strings.TrimSpace(line[n+1:]), Line: i, End: utf16Len(line[:end])})
 	}
 	return out
 }
@@ -153,7 +155,7 @@ func diag(line, char, severity int, msg, code string) diagnostic {
 		char = 0
 	}
 	return diagnostic{
-		Range:    range_{Start: position{Line: line, Character: char}, End: position{Line: line, Character: char + 1}},
+		Range:    textRange{Start: position{Line: line, Character: char}, End: position{Line: line, Character: char + 1}},
 		Severity: severity,
 		Code:     code,
 		Source:   source,
@@ -165,10 +167,22 @@ func symbols(text string) []documentSymbol {
 	heads := headings(text)
 	out := make([]documentSymbol, 0, len(heads))
 	for _, h := range heads {
-		r := range_{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: len(h.Text) + h.Level + 1}}
+		r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
 		out = append(out, documentSymbol{Name: h.Text, Kind: 13, Range: r, SelectionRange: r})
 	}
 	return out
+}
+
+func utf16Len(s string) int {
+	n := 0
+	for _, r := range s {
+		if r > 0xFFFF {
+			n += 2
+		} else {
+			n++
+		}
+	}
+	return n
 }
 
 func completions(uri, text string) []completionItem {

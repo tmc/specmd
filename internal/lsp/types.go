@@ -32,22 +32,22 @@ type position struct {
 	Character int `json:"character"`
 }
 
-type range_ struct {
+type textRange struct {
 	Start position `json:"start"`
 	End   position `json:"end"`
 }
 
 type location struct {
-	URI   string `json:"uri"`
-	Range range_ `json:"range"`
+	URI   string    `json:"uri"`
+	Range textRange `json:"range"`
 }
 
 type diagnostic struct {
-	Range    range_ `json:"range"`
-	Severity int    `json:"severity,omitempty"`
-	Code     string `json:"code,omitempty"`
-	Source   string `json:"source,omitempty"`
-	Message  string `json:"message"`
+	Range    textRange `json:"range"`
+	Severity int       `json:"severity,omitempty"`
+	Code     string    `json:"code,omitempty"`
+	Source   string    `json:"source,omitempty"`
+	Message  string    `json:"message"`
 }
 
 type textDocumentItem struct {
@@ -133,7 +133,7 @@ type markupContent struct {
 type documentSymbol struct {
 	Name           string           `json:"name"`
 	Kind           int              `json:"kind"`
-	Range          range_           `json:"range"`
-	SelectionRange range_           `json:"selectionRange"`
+	Range          textRange        `json:"range"`
+	SelectionRange textRange        `json:"selectionRange"`
 	Children       []documentSymbol `json:"children,omitempty"`
 }

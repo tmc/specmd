@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -34,6 +35,16 @@ func TestServerPublishesDiagnostics(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("publishDiagnostics not found: %+v", messages)
+	}
+}
+
+func TestReadMessageRejectsLargeContentLength(t *testing.T) {
+	_, err := readMessage(bufio.NewReader(strings.NewReader("Content-Length: 16777217\r\n\r\n")))
+	if err == nil {
+		t.Fatal("readMessage succeeded, want error")
+	}
+	if got, want := err.Error(), "content length too large"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
 

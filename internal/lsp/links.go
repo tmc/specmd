@@ -8,7 +8,7 @@ import (
 
 type wikiLink struct {
 	URI    string
-	Range  range_
+	Range  textRange
 	Target linkTarget
 }
 
@@ -51,7 +51,7 @@ func (s *Server) targetAt(uri string, pos position) (location, bool) {
 	}
 	for _, h := range headings(s.docs[uri]) {
 		if h.Line == pos.Line {
-			r := range_{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.Level + 1 + len(h.Text)}}
+			r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
 			return location{URI: uri, Range: r}, true
 		}
 	}
@@ -71,17 +71,17 @@ func (s *Server) resolveLink(fromURI string, target linkTarget) (location, bool)
 	if target.Heading != "" {
 		for _, h := range headings(text) {
 			if sameName(h.Text, target.Heading) {
-				r := range_{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.Level + 1 + len(h.Text)}}
+				r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
 				return location{URI: docURI, Range: r}, true
 			}
 		}
 		return location{}, false
 	}
 	if h, ok := titleHeading(text); ok {
-		r := range_{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.Level + 1 + len(h.Text)}}
+		r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
 		return location{URI: docURI, Range: r}, true
 	}
-	return location{URI: docURI, Range: range_{}}, true
+	return location{URI: docURI, Range: textRange{}}, true
 }
 
 func (s *Server) resolveDoc(name string) (string, bool) {
@@ -144,7 +144,7 @@ func wikiLinks(text string) []wikiLink {
 			target := parseLinkTarget(raw)
 			if target.Doc != "" || target.Heading != "" {
 				links = append(links, wikiLink{
-					Range:  range_{Start: position{Line: lineNo, Character: i}, End: position{Line: lineNo, Character: j + 2}},
+					Range:  textRange{Start: position{Line: lineNo, Character: utf16Len(line[:i])}, End: position{Line: lineNo, Character: utf16Len(line[:j+2])}},
 					Target: target,
 				})
 			}
