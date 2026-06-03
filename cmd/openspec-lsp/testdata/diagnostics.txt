@@ -1,0 +1,11 @@
+lsp session.jsonl
+stdout '"name":"openspec-lsp"'
+stdout '"method":"textDocument/publishDiagnostics"'
+stdout 'missing ## Story section'
+stdout 'missing ## Questions section'
+
+-- session.jsonl --
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/example-mapping/auth.md","languageId":"markdown","version":1,"text":"# Login example mapping\n\n## Rules\n\n## Examples\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

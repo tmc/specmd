@@ -1,0 +1,15 @@
+lsp session.jsonl
+stdout '"name":"Login opportunity tree"'
+stdout '"name":"Outcome"'
+stdout '"name":"Requirement: Login"'
+stdout '"label":"## Experiments"'
+stdout 'Opportunity Solution Tree extension'
+
+-- session.jsonl --
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/opportunity-tree/auth.md","languageId":"markdown","version":1,"text":"# Login opportunity tree\n\n## Outcome\n\nImprove successful logins.\n\n### Requirement: Login\n\n## Opportunities\n\n## Solutions\n\n## Experiments\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/opportunity-tree/auth.md"}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/opportunity-tree/auth.md"},"position":{"line":10,"character":0}}}
+{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/opportunity-tree/auth.md"},"position":{"line":0,"character":0}}}
+{"jsonrpc":"2.0","id":5,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

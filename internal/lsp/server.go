@@ -86,7 +86,7 @@ func (s *Server) handle(req request) error {
 			return nil
 		}
 		delete(s.docs, p.TextDocument.URI)
-		return s.notify("textDocument/publishDiagnostics", publishDiagnosticsParams{URI: p.TextDocument.URI})
+		return s.notify("textDocument/publishDiagnostics", publishDiagnosticsParams{URI: p.TextDocument.URI, Diagnostics: []diagnostic{}})
 	case "textDocument/documentSymbol":
 		var p textDocumentParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
@@ -114,9 +114,13 @@ func (s *Server) handle(req request) error {
 }
 
 func (s *Server) publishDiagnostics(uri string) error {
+	diags := analyze(uri, s.docs[uri])
+	if diags == nil {
+		diags = []diagnostic{}
+	}
 	return s.notify("textDocument/publishDiagnostics", publishDiagnosticsParams{
 		URI:         uri,
-		Diagnostics: analyze(uri, s.docs[uri]),
+		Diagnostics: diags,
 	})
 }
 
