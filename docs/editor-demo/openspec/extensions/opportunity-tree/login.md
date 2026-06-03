@@ -1,5 +1,7 @@
 # Login opportunity tree
 
+Related object model: [[OOUX model#Objects]].
+
 ## Outcome
 
 Increase successful logins.

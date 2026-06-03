@@ -97,6 +97,16 @@ type textDocumentPositionParams struct {
 	Position     position               `json:"position"`
 }
 
+type referenceParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+	Position     position               `json:"position"`
+	Context      referenceContext       `json:"context,omitempty"`
+}
+
+type referenceContext struct {
+	IncludeDeclaration bool `json:"includeDeclaration,omitempty"`
+}
+
 type completionList struct {
 	IsIncomplete bool             `json:"isIncomplete"`
 	Items        []completionItem `json:"items"`

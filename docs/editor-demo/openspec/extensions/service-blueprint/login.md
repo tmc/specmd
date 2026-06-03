@@ -1,5 +1,7 @@
 # Login service blueprint
 
+Related journey: [[Login journey#Stages]].
+
 ## Blueprint
 
 ### Submit credentials

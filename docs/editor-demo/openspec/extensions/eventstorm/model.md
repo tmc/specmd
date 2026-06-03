@@ -1,5 +1,7 @@
 # Sign-in event storm
 
+Related model: [[OOUX model#Objects]] and [[Context map#Relationships]].
+
 ## Events
 
 - UserSignedIn

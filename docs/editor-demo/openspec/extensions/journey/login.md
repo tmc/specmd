@@ -1,5 +1,7 @@
 # Login journey
 
+Related model: [[OOUX model#Objects]] and [[Login service blueprint#Blueprint]].
+
 ## Actor
 
 Returning user

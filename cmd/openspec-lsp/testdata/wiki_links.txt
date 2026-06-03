@@ -1,0 +1,17 @@
+lsp session.jsonl
+stdout '"definitionProvider":true'
+stdout '"referencesProvider":true'
+stdout '"uri":"file:///repo/openspec/extensions/contexts/map.md"'
+stdout '"line":4'
+stdout '"uri":"file:///repo/openspec/extensions/ooux/model.md"'
+stdout '"uri":"file:///repo/openspec/extensions/eventstorm/model.md"'
+
+-- session.jsonl --
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/ooux/model.md","languageId":"markdown","version":1,"text":"# OOUX model\n\n## Objects\n\n### Account\n\nSee [[Context map#Relationships|context relationships]].\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/contexts/map.md","languageId":"markdown","version":1,"text":"# Context map\n\n## Contexts\n\n## Relationships\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/eventstorm/model.md","languageId":"markdown","version":1,"text":"# Event storm\n\nSee [[Context map#Relationships]].\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/definition","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/ooux/model.md"},"position":{"line":6,"character":8}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/references","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/contexts/map.md"},"position":{"line":4,"character":3},"context":{"includeDeclaration":false}}}
+{"jsonrpc":"2.0","id":4,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

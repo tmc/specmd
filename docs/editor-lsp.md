@@ -100,6 +100,9 @@ Useful editor checks:
 - completion after `## ` includes missing required sections first
 - completion offers requirement/scenario blocks and scenario fields
 - extension files offer family-specific fields, blocks, and subheadings
+- Obsidian-style links such as `[[OOUX model#Objects]]` jump to opened
+  extension documents and headings
+- references from a linked heading show other opened documents that link to it
 - document symbols show headings
 - hover on known headings returns OpenSpec-specific text
 
@@ -127,6 +130,8 @@ Supported now:
 - `textDocument/documentSymbol`
 - `textDocument/completion`
 - `textDocument/hover`
+- `textDocument/definition`
+- `textDocument/references`
 
 Current behavior:
 
@@ -138,6 +143,9 @@ Current behavior:
   extension-specific fields or subheadings
 - document symbols are Markdown headings
 - hover describes known sections or the document extension family
+- definitions and references resolve Obsidian-style `[[target]]`,
+  `[[target#heading]]`, `[[#heading]]`, and aliased `[[target|label]]` links
+  among currently opened documents
 
 Useful later:
 

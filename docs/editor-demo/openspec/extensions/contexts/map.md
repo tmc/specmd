@@ -1,5 +1,7 @@
 # Context map
 
+Related model: [[OOUX model#Objects]].
+
 ## Contexts
 
 ### Identity

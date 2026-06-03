@@ -55,6 +55,8 @@ func (s *Server) handle(req request) error {
 			"capabilities": map[string]any{
 				"textDocumentSync":       map[string]any{"openClose": true, "change": 1},
 				"documentSymbolProvider": true,
+				"definitionProvider":     true,
+				"referencesProvider":     true,
 				"completionProvider": map[string]any{
 					"triggerCharacters": []string{"#", "-", ":"},
 				},
@@ -105,6 +107,18 @@ func (s *Server) handle(req request) error {
 			return s.respond(req.ID, nil)
 		}
 		return s.respond(req.ID, hover{Contents: markupContent{Kind: "markdown", Value: hoverAt(p.TextDocument.URI, s.docs[p.TextDocument.URI], p.Position)}})
+	case "textDocument/definition":
+		var p textDocumentPositionParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []location{})
+		}
+		return s.respond(req.ID, s.definitions(p.TextDocument.URI, p.Position))
+	case "textDocument/references":
+		var p referenceParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []location{})
+		}
+		return s.respond(req.ID, s.references(p.TextDocument.URI, p.Position))
 	default:
 		if len(req.ID) == 0 {
 			return nil
