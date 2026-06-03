@@ -1,6 +1,9 @@
 package lsp
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestAnalyzeSpecDiagnostics(t *testing.T) {
 	diags := analyze("file:///repo/openspec/specs/auth/spec.md", "# Auth\n\n## Purpose\n")
@@ -73,11 +76,16 @@ func TestCompletionsIncludeBlocksAndFields(t *testing.T) {
 		{"delta block", "file:///repo/openspec/changes/add-auth/specs/auth/spec.md", "", "ADDED requirement block"},
 		{"ooux subheading", "file:///repo/openspec/extensions/ooux/model.md", "", "#### Attributes"},
 		{"ooux block", "file:///repo/openspec/extensions/ooux/model.md", "", "OOUX object block"},
+		{"context relationship", "file:///repo/openspec/extensions/contexts/map.md", "", "context relationship"},
+		{"domain story step", "file:///repo/openspec/extensions/domain-story/model.md", "", "domain story step"},
 		{"eventstorm field", "file:///repo/openspec/extensions/eventstorm/model.md", "", "command field"},
 		{"example field", "file:///repo/openspec/extensions/example-mapping/auth.md", "", "question field"},
+		{"job story", "file:///repo/openspec/extensions/jobs/stories.md", "", "job story"},
 		{"opportunity field", "file:///repo/openspec/extensions/opportunity-tree/login.md", "", "experiment field"},
 		{"journey stage", "file:///repo/openspec/extensions/journey/login.md", "", "stage block"},
 		{"blueprint field", "file:///repo/openspec/extensions/service-blueprint/login.md", "", "frontstage field"},
+		{"stratmd objective", "file:///repo/openspec/extensions/stratmd/strategy.md", "", "strategy objective"},
+		{"magi typed block", "file:///repo/openspec/extensions/magi/context.md", "", "magi typed block"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -110,6 +118,24 @@ func TestHoverAtHeading(t *testing.T) {
 	}
 	if got, want := hoverAt("file:///repo/openspec/specs/auth/spec.md", text, position{Line: 4}), "Requirement headings name one behavior contract."; got != want {
 		t.Fatalf("hover = %q, want %q", got, want)
+	}
+}
+
+func TestHoverForExtensionFamilies(t *testing.T) {
+	tests := []struct {
+		uri  string
+		want string
+	}{
+		{"file:///repo/openspec/extensions/domain-story/model.md", "Domain Storytelling extension"},
+		{"file:///repo/openspec/extensions/stratmd/strategy.md", "StratMD extension"},
+		{"file:///repo/openspec/extensions/magi/context.md", "MAGI extension"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.uri, func(t *testing.T) {
+			if got := hoverFor(tt.uri); !strings.Contains(got, tt.want) {
+				t.Fatalf("hoverFor(%q) = %q, want substring %q", tt.uri, got, tt.want)
+			}
+		})
 	}
 }
 

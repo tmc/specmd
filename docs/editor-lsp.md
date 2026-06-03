@@ -88,6 +88,10 @@ Files to try:
   opportunity-tree sections and hover describes extension headings.
 - `openspec/extensions/ooux/model.md` is clean; completion offers OOUX object
   blocks and object subheadings.
+- `openspec/extensions/contexts/map.md`, `domain-story/model.md`,
+  `eventstorm/model.md`, `jobs/stories.md`, `journey/login.md`,
+  `service-blueprint/login.md`, `stratmd/strategy.md`, and
+  `magi/context.md` exercise the other extension completion families.
 
 Useful editor checks:
 
@@ -95,7 +99,7 @@ Useful editor checks:
 - diagnostics clear after adding the missing section
 - completion after `## ` includes missing required sections first
 - completion offers requirement/scenario blocks and scenario fields
-- extension files offer family-specific fields and subheadings
+- extension files offer family-specific fields, blocks, and subheadings
 - document symbols show headings
 - hover on known headings returns OpenSpec-specific text
 

@@ -229,16 +229,39 @@ func extensionCompletions(name string) []completionItem {
 		}
 	case "eventstorm":
 		return []completionItem{
+			{Label: "eventstorm slice", Kind: completionKindSnippet, Detail: "event, command, actor, policy, and read model", InsertText: "### ${1:Slice}\n\n- event: ${2:event}\n- command: ${3:command}\n- actor: ${4:actor}\n- policy: ${5:policy}\n- read model: ${6:model}\n", InsertTextFormat: insertTextSnippet},
 			{Label: "event field", Kind: completionKindText, Detail: "EventStorming event bullet", InsertText: "- event: "},
 			{Label: "command field", Kind: completionKindText, Detail: "EventStorming command bullet", InsertText: "- command: "},
 			{Label: "actor field", Kind: completionKindText, Detail: "EventStorming actor bullet", InsertText: "- actor: "},
 			{Label: "policy field", Kind: completionKindText, Detail: "EventStorming policy bullet", InsertText: "- policy: "},
+			{Label: "read model field", Kind: completionKindText, Detail: "EventStorming read model bullet", InsertText: "- read model: "},
+		}
+	case "contexts":
+		return []completionItem{
+			{Label: "context relationship", Kind: completionKindSnippet, Detail: "bounded context relationship", InsertText: "### ${1:Context} -> ${2:Context}\n\n- upstream: ${3:upstream}\n- downstream: ${4:downstream}\n- relationship: ${5:relationship}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "upstream field", Kind: completionKindText, Detail: "Context Map field", InsertText: "- upstream: "},
+			{Label: "downstream field", Kind: completionKindText, Detail: "Context Map field", InsertText: "- downstream: "},
+			{Label: "relationship field", Kind: completionKindText, Detail: "Context Map field", InsertText: "- relationship: "},
+		}
+	case "domain-story":
+		return []completionItem{
+			{Label: "domain story step", Kind: completionKindSnippet, Detail: "actor action work object", InsertText: "- ${1:actor} ${2:does} ${3:work object}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "actor field", Kind: completionKindText, Detail: "Domain Storytelling actor", InsertText: "- actor: "},
+			{Label: "work object field", Kind: completionKindText, Detail: "Domain Storytelling work object", InsertText: "- work object: "},
+			{Label: "activity field", Kind: completionKindText, Detail: "Domain Storytelling activity", InsertText: "- activity: "},
 		}
 	case "example-mapping":
 		return []completionItem{
 			{Label: "rule field", Kind: completionKindText, Detail: "Example Mapping rule bullet", InsertText: "- rule: "},
 			{Label: "example field", Kind: completionKindText, Detail: "Example Mapping example bullet", InsertText: "- example: "},
 			{Label: "question field", Kind: completionKindText, Detail: "Example Mapping question bullet", InsertText: "- question: "},
+		}
+	case "jobs":
+		return []completionItem{
+			{Label: "job story", Kind: completionKindSnippet, Detail: "When/I want/so I can story", InsertText: "- WHEN ${1:situation}\n  I WANT ${2:motivation}\n  SO I CAN ${3:outcome}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "WHEN job field", Kind: completionKindText, Detail: "Job Story situation", InsertText: "- WHEN "},
+			{Label: "I WANT field", Kind: completionKindText, Detail: "Job Story motivation", InsertText: "  I WANT "},
+			{Label: "SO I CAN field", Kind: completionKindText, Detail: "Job Story outcome", InsertText: "  SO I CAN "},
 		}
 	case "opportunity-tree":
 		return []completionItem{
@@ -256,11 +279,26 @@ func extensionCompletions(name string) []completionItem {
 		}
 	case "service-blueprint":
 		return []completionItem{
+			{Label: "blueprint step", Kind: completionKindSnippet, Detail: "Service Blueprint step", InsertText: "### ${1:Step}\n\n- evidence: ${2:evidence}\n- customer action: ${3:action}\n- frontstage: ${4:frontstage}\n- backstage: ${5:backstage}\n- support: ${6:support}\n", InsertTextFormat: insertTextSnippet},
 			{Label: "blueprint lane", Kind: completionKindText, Detail: "Service Blueprint lane", InsertText: "- lane: "},
+			{Label: "evidence field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- evidence: "},
 			{Label: "customer action field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- customer action: "},
 			{Label: "frontstage field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- frontstage: "},
 			{Label: "backstage field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- backstage: "},
 			{Label: "support field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- support: "},
+		}
+	case "stratmd":
+		return []completionItem{
+			{Label: "strategy objective", Kind: completionKindSnippet, Detail: "StratMD objective with goals and actions", InsertText: "## Objective\n\n${1:objective}\n\n## Goals\n\n- ${2:goal}\n\n## Actions\n\n- ${3:action}\n\n## Changelog\n\n- ${4:change}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "goal field", Kind: completionKindText, Detail: "StratMD goal", InsertText: "- goal: "},
+			{Label: "risk field", Kind: completionKindText, Detail: "StratMD risk", InsertText: "- risk: "},
+			{Label: "action field", Kind: completionKindText, Detail: "StratMD action", InsertText: "- action: "},
+		}
+	case "magi":
+		return []completionItem{
+			{Label: "magi typed block", Kind: completionKindSnippet, Detail: "MAGI typed fenced block", InsertText: "```yaml ${1:type}\n${2:key}: ${3:value}\n```\n", InsertTextFormat: insertTextSnippet},
+			{Label: "relationship field", Kind: completionKindText, Detail: "MAGI relationship", InsertText: "- relationship: "},
+			{Label: "artifact field", Kind: completionKindText, Detail: "MAGI artifact", InsertText: "- artifact: "},
 		}
 	default:
 		return nil
@@ -320,6 +358,8 @@ func hoverFor(uri string) string {
 		return "EventStorming extension: events, commands, actors, systems, policies, and read models."
 	case "contexts":
 		return "Context Map extension: bounded contexts and their upstream/downstream relationships."
+	case "domain-story":
+		return "Domain Storytelling extension: actors, activities, work objects, and story steps."
 	case "example-mapping":
 		return "Example Mapping extension: story, rules, examples, and questions."
 	case "service-blueprint":
@@ -330,6 +370,10 @@ func hoverFor(uri string) string {
 		return "Job Stories extension: When situation, I want motivation, so I can outcome."
 	case "opportunity-tree":
 		return "Opportunity Solution Tree extension: outcome, opportunities, solutions, and experiments."
+	case "stratmd":
+		return "StratMD extension: strategic intent, objectives, goals, risks, actions, and changelog."
+	case "magi":
+		return "MAGI extension: typed Markdown blocks, artifacts, and relationships."
 	default:
 		return "OpenSpec Markdown document."
 	}
