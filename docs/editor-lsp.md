@@ -86,12 +86,16 @@ Files to try:
   `## Questions`.
 - `openspec/extensions/opportunity-tree/login.md` is clean; completion offers
   opportunity-tree sections and hover describes extension headings.
+- `openspec/extensions/ooux/model.md` is clean; completion offers OOUX object
+  blocks and object subheadings.
 
 Useful editor checks:
 
 - diagnostics appear after opening a file
 - diagnostics clear after adding the missing section
 - completion after `## ` includes missing required sections first
+- completion offers requirement/scenario blocks and scenario fields
+- extension files offer family-specific fields and subheadings
 - document symbols show headings
 - hover on known headings returns OpenSpec-specific text
 
@@ -126,7 +130,8 @@ Current behavior:
   extension families
 - heading diagnostics catch non-breaking spaces after Markdown `#`
 - completion suggests missing required sections before general OpenSpec
-  headings
+  headings, plus requirement blocks, scenario fields, delta blocks, and
+  extension-specific fields or subheadings
 - document symbols are Markdown headings
 - hover describes known sections or the document extension family
 

@@ -9,6 +9,12 @@ import (
 
 const source = "openspec"
 
+const (
+	completionKindText    = 1
+	completionKindSnippet = 15
+	insertTextSnippet     = 2
+)
+
 type heading struct {
 	Level int
 	Text  string
@@ -171,25 +177,94 @@ func completions(uri, text string) []completionItem {
 	seen := presentSections(headings(text))
 	for _, sec := range requiredSections(uri) {
 		if !seen[strings.ToLower(sec)] {
-			items = appendCompletion(items, labels, completionItem{Label: "## " + sec, Kind: 15, Detail: "missing required OpenSpec section", InsertText: "## " + sec + "\n"})
+			items = appendCompletion(items, labels, completionItem{Label: "## " + sec, Kind: completionKindSnippet, Detail: "missing required OpenSpec section", InsertText: "## " + sec + "\n"})
 		}
 	}
-	for _, item := range []completionItem{
-		{Label: "## Purpose", Kind: 15, Detail: "OpenSpec spec section", InsertText: "## Purpose\n"},
-		{Label: "## Requirements", Kind: 15, Detail: "OpenSpec spec section", InsertText: "## Requirements\n"},
-		{Label: "### Requirement:", Kind: 15, Detail: "OpenSpec requirement", InsertText: "### Requirement: "},
-		{Label: "#### Scenario:", Kind: 15, Detail: "OpenSpec scenario", InsertText: "#### Scenario: "},
-		{Label: "## ADDED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## ADDED Requirements\n"},
-		{Label: "## MODIFIED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## MODIFIED Requirements\n"},
-		{Label: "## REMOVED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## REMOVED Requirements\n"},
-		{Label: "## RENAMED Requirements", Kind: 15, Detail: "OpenSpec delta section", InsertText: "## RENAMED Requirements\n"},
-	} {
+	for _, item := range coreCompletions(uri) {
 		items = appendCompletion(items, labels, item)
 	}
 	for _, sec := range extensionSections(extensionName(uri)) {
-		items = appendCompletion(items, labels, completionItem{Label: "## " + sec, Kind: 15, Detail: "OpenSpec extension section", InsertText: "## " + sec + "\n"})
+		items = appendCompletion(items, labels, completionItem{Label: "## " + sec, Kind: completionKindSnippet, Detail: "OpenSpec extension section", InsertText: "## " + sec + "\n"})
+	}
+	for _, item := range extensionCompletions(extensionName(uri)) {
+		items = appendCompletion(items, labels, item)
 	}
 	return items
+}
+
+func coreCompletions(uri string) []completionItem {
+	items := []completionItem{
+		{Label: "## Purpose", Kind: completionKindSnippet, Detail: "OpenSpec spec section", InsertText: "## Purpose\n"},
+		{Label: "## Requirements", Kind: completionKindSnippet, Detail: "OpenSpec spec section", InsertText: "## Requirements\n"},
+		{Label: "### Requirement:", Kind: completionKindSnippet, Detail: "OpenSpec requirement heading", InsertText: "### Requirement: ${1:name}\n\n$0", InsertTextFormat: insertTextSnippet},
+		{Label: "#### Scenario:", Kind: completionKindSnippet, Detail: "OpenSpec scenario heading", InsertText: "#### Scenario: ${1:name}\n\n- GIVEN ${2:context}\n- WHEN ${3:action}\n- THEN ${4:outcome}\n", InsertTextFormat: insertTextSnippet},
+		{Label: "Requirement block", Kind: completionKindSnippet, Detail: "OpenSpec requirement with scenario", InsertText: "### Requirement: ${1:name}\n\n#### Scenario: ${2:name}\n\n- GIVEN ${3:context}\n- WHEN ${4:action}\n- THEN ${5:outcome}\n", InsertTextFormat: insertTextSnippet},
+		{Label: "GIVEN field", Kind: completionKindText, Detail: "OpenSpec scenario field", InsertText: "- GIVEN "},
+		{Label: "WHEN field", Kind: completionKindText, Detail: "OpenSpec scenario field", InsertText: "- WHEN "},
+		{Label: "THEN field", Kind: completionKindText, Detail: "OpenSpec scenario field", InsertText: "- THEN "},
+		{Label: "AND field", Kind: completionKindText, Detail: "OpenSpec scenario field", InsertText: "- AND "},
+		{Label: "## ADDED Requirements", Kind: completionKindSnippet, Detail: "OpenSpec delta section", InsertText: "## ADDED Requirements\n"},
+		{Label: "## MODIFIED Requirements", Kind: completionKindSnippet, Detail: "OpenSpec delta section", InsertText: "## MODIFIED Requirements\n"},
+		{Label: "## REMOVED Requirements", Kind: completionKindSnippet, Detail: "OpenSpec delta section", InsertText: "## REMOVED Requirements\n"},
+		{Label: "## RENAMED Requirements", Kind: completionKindSnippet, Detail: "OpenSpec delta section", InsertText: "## RENAMED Requirements\n"},
+		{Label: "ADDED requirement block", Kind: completionKindSnippet, Detail: "OpenSpec delta requirement", InsertText: "## ADDED Requirements\n\n### Requirement: ${1:name}\n\n#### Scenario: ${2:name}\n\n- GIVEN ${3:context}\n- WHEN ${4:action}\n- THEN ${5:outcome}\n", InsertTextFormat: insertTextSnippet},
+	}
+	if strings.HasSuffix(uri, "/proposal.md") {
+		items = append([]completionItem{
+			{Label: "## Why", Kind: completionKindSnippet, Detail: "OpenSpec change proposal section", InsertText: "## Why\n\n$0", InsertTextFormat: insertTextSnippet},
+			{Label: "## What Changes", Kind: completionKindSnippet, Detail: "OpenSpec change proposal section", InsertText: "## What Changes\n\n$0", InsertTextFormat: insertTextSnippet},
+		}, items...)
+	}
+	return items
+}
+
+func extensionCompletions(name string) []completionItem {
+	switch name {
+	case "ooux":
+		return []completionItem{
+			{Label: "OOUX object block", Kind: completionKindSnippet, Detail: "object, attributes, relationships, and CTAs", InsertText: "### ${1:Object}\n\n#### Attributes\n\n- ${2:attribute}\n\n#### Relationships\n\n- ${3:relationship}\n\n#### Calls to Action\n\n- ${4:action}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "#### Attributes", Kind: completionKindSnippet, Detail: "OOUX object subheading", InsertText: "#### Attributes\n\n- ${1:attribute}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "#### Relationships", Kind: completionKindSnippet, Detail: "OOUX object subheading", InsertText: "#### Relationships\n\n- ${1:relationship}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "#### Calls to Action", Kind: completionKindSnippet, Detail: "OOUX object subheading", InsertText: "#### Calls to Action\n\n- ${1:action}\n", InsertTextFormat: insertTextSnippet},
+		}
+	case "eventstorm":
+		return []completionItem{
+			{Label: "event field", Kind: completionKindText, Detail: "EventStorming event bullet", InsertText: "- event: "},
+			{Label: "command field", Kind: completionKindText, Detail: "EventStorming command bullet", InsertText: "- command: "},
+			{Label: "actor field", Kind: completionKindText, Detail: "EventStorming actor bullet", InsertText: "- actor: "},
+			{Label: "policy field", Kind: completionKindText, Detail: "EventStorming policy bullet", InsertText: "- policy: "},
+		}
+	case "example-mapping":
+		return []completionItem{
+			{Label: "rule field", Kind: completionKindText, Detail: "Example Mapping rule bullet", InsertText: "- rule: "},
+			{Label: "example field", Kind: completionKindText, Detail: "Example Mapping example bullet", InsertText: "- example: "},
+			{Label: "question field", Kind: completionKindText, Detail: "Example Mapping question bullet", InsertText: "- question: "},
+		}
+	case "opportunity-tree":
+		return []completionItem{
+			{Label: "opportunity field", Kind: completionKindText, Detail: "Opportunity Solution Tree bullet", InsertText: "- opportunity: "},
+			{Label: "solution field", Kind: completionKindText, Detail: "Opportunity Solution Tree bullet", InsertText: "- solution: "},
+			{Label: "experiment field", Kind: completionKindText, Detail: "Opportunity Solution Tree bullet", InsertText: "- experiment: "},
+		}
+	case "journey":
+		return []completionItem{
+			{Label: "stage block", Kind: completionKindSnippet, Detail: "Journey stage with common fields", InsertText: "### ${1:Stage}\n\n- action: ${2:action}\n- mindset: ${3:mindset}\n- emotion: ${4:emotion}\n- opportunity: ${5:opportunity}\n", InsertTextFormat: insertTextSnippet},
+			{Label: "action field", Kind: completionKindText, Detail: "Journey stage field", InsertText: "- action: "},
+			{Label: "mindset field", Kind: completionKindText, Detail: "Journey stage field", InsertText: "- mindset: "},
+			{Label: "emotion field", Kind: completionKindText, Detail: "Journey stage field", InsertText: "- emotion: "},
+			{Label: "opportunity field", Kind: completionKindText, Detail: "Journey stage field", InsertText: "- opportunity: "},
+		}
+	case "service-blueprint":
+		return []completionItem{
+			{Label: "blueprint lane", Kind: completionKindText, Detail: "Service Blueprint lane", InsertText: "- lane: "},
+			{Label: "customer action field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- customer action: "},
+			{Label: "frontstage field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- frontstage: "},
+			{Label: "backstage field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- backstage: "},
+			{Label: "support field", Kind: completionKindText, Detail: "Service Blueprint field", InsertText: "- support: "},
+		}
+	default:
+		return nil
+	}
 }
 
 func appendCompletion(items []completionItem, labels map[string]bool, item completionItem) []completionItem {

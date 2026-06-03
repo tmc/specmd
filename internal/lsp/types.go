@@ -103,11 +103,12 @@ type completionList struct {
 }
 
 type completionItem struct {
-	Label         string `json:"label"`
-	Kind          int    `json:"kind,omitempty"`
-	Detail        string `json:"detail,omitempty"`
-	Documentation string `json:"documentation,omitempty"`
-	InsertText    string `json:"insertText,omitempty"`
+	Label            string `json:"label"`
+	Kind             int    `json:"kind,omitempty"`
+	Detail           string `json:"detail,omitempty"`
+	Documentation    string `json:"documentation,omitempty"`
+	InsertText       string `json:"insertText,omitempty"`
+	InsertTextFormat int    `json:"insertTextFormat,omitempty"`
 }
 
 type hover struct {

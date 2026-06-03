@@ -56,7 +56,7 @@ func (s *Server) handle(req request) error {
 				"textDocumentSync":       map[string]any{"openClose": true, "change": 1},
 				"documentSymbolProvider": true,
 				"completionProvider": map[string]any{
-					"triggerCharacters": []string{"#", "["},
+					"triggerCharacters": []string{"#", "-", ":"},
 				},
 				"hoverProvider": true,
 			},

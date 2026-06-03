@@ -60,6 +60,49 @@ func TestCompletionsPutMissingSectionsFirst(t *testing.T) {
 	}
 }
 
+func TestCompletionsIncludeBlocksAndFields(t *testing.T) {
+	tests := []struct {
+		name  string
+		uri   string
+		text  string
+		label string
+	}{
+		{"requirement block", "file:///repo/openspec/specs/auth/spec.md", "", "Requirement block"},
+		{"scenario field", "file:///repo/openspec/specs/auth/spec.md", "", "GIVEN field"},
+		{"proposal section", "file:///repo/openspec/changes/add-auth/proposal.md", "", "## What Changes"},
+		{"delta block", "file:///repo/openspec/changes/add-auth/specs/auth/spec.md", "", "ADDED requirement block"},
+		{"ooux subheading", "file:///repo/openspec/extensions/ooux/model.md", "", "#### Attributes"},
+		{"ooux block", "file:///repo/openspec/extensions/ooux/model.md", "", "OOUX object block"},
+		{"eventstorm field", "file:///repo/openspec/extensions/eventstorm/model.md", "", "command field"},
+		{"example field", "file:///repo/openspec/extensions/example-mapping/auth.md", "", "question field"},
+		{"opportunity field", "file:///repo/openspec/extensions/opportunity-tree/login.md", "", "experiment field"},
+		{"journey stage", "file:///repo/openspec/extensions/journey/login.md", "", "stage block"},
+		{"blueprint field", "file:///repo/openspec/extensions/service-blueprint/login.md", "", "frontstage field"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			items := completions(tt.uri, tt.text)
+			if !hasCompletion(items, tt.label) {
+				t.Fatalf("missing %s completion: %+v", tt.label, items)
+			}
+		})
+	}
+}
+
+func TestCompletionSnippetsUseSnippetFormat(t *testing.T) {
+	items := completions("file:///repo/openspec/specs/auth/spec.md", "")
+	item, ok := completionByLabel(items, "Requirement block")
+	if !ok {
+		t.Fatalf("missing Requirement block completion: %+v", items)
+	}
+	if got, want := item.InsertTextFormat, insertTextSnippet; got != want {
+		t.Fatalf("InsertTextFormat = %d, want %d", got, want)
+	}
+	if got, want := item.InsertText, "### Requirement: ${1:name}\n\n#### Scenario: ${2:name}\n\n- GIVEN ${3:context}\n- WHEN ${4:action}\n- THEN ${5:outcome}\n"; got != want {
+		t.Fatalf("InsertText = %q, want %q", got, want)
+	}
+}
+
 func TestHoverAtHeading(t *testing.T) {
 	text := "# Auth\n\n## Requirements\n\n### Requirement: Login\n"
 	if got, want := hoverAt("file:///repo/openspec/specs/auth/spec.md", text, position{Line: 2}), "Requirements contain user-visible behavior and scenarios."; got != want {
@@ -81,12 +124,17 @@ func TestSymbols(t *testing.T) {
 }
 
 func hasCompletion(items []completionItem, label string) bool {
+	_, ok := completionByLabel(items, label)
+	return ok
+}
+
+func completionByLabel(items []completionItem, label string) (completionItem, bool) {
 	for _, item := range items {
 		if item.Label == label {
-			return true
+			return item, true
 		}
 	}
-	return false
+	return completionItem{}, false
 }
 
 func hasDiagnostic(diags []diagnostic, msg string) bool {
