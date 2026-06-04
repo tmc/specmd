@@ -1,0 +1,27 @@
+[
+  {
+    "label": "openspec: validate current file",
+    "command": "go test ./...",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "openspec: validate project",
+    "command": "go test ./...",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "openspec: test lsp",
+    "command": "go test ./cmd/openspec-lsp",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "openspec: test all",
+    "command": "go test ./...",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false
+  }
+]
+
