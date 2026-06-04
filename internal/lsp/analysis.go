@@ -5,6 +5,8 @@ import (
 	"path"
 	"sort"
 	"strings"
+
+	openspec "github.com/tmc/openspec"
 )
 
 const source = "openspec"
@@ -27,6 +29,7 @@ func analyze(uri, text string) []diagnostic {
 	heads := headings(text)
 	diags = append(diags, requireSections(heads, requiredSections(uri)...)...)
 	diags = append(diags, headingWhitespaceDiagnostics(text)...)
+	diags = append(diags, validationDiagnostics(uri, text, diags)...)
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Range.Start.Line != diags[j].Range.Start.Line {
 			return diags[i].Range.Start.Line < diags[j].Range.Start.Line
@@ -34,6 +37,55 @@ func analyze(uri, text string) []diagnostic {
 		return diags[i].Message < diags[j].Message
 	})
 	return diags
+}
+
+func validationDiagnostics(uri, text string, existing []diagnostic) []diagnostic {
+	if hasSectionDiagnostics(existing) {
+		return nil
+	}
+	if !(path.Base(uri) == "spec.md" && strings.Contains(uri, "/openspec/specs/")) {
+		return nil
+	}
+	spec, err := openspec.ParseSpec(specNameFromURI(uri), strings.NewReader(text))
+	if err != nil {
+		return []diagnostic{diag(0, 0, 1, err.Error(), "parse")}
+	}
+	report := openspec.ValidateSpecReport(spec)
+	var out []diagnostic
+	for _, issue := range report.Issues {
+		out = append(out, diag(0, 0, validationSeverity(issue.Level), issue.Path+": "+issue.Message, "validation"))
+	}
+	return out
+}
+
+func hasSectionDiagnostics(diags []diagnostic) bool {
+	for _, diag := range diags {
+		if diag.Code == "section" {
+			return true
+		}
+	}
+	return false
+}
+
+func validationSeverity(level openspec.ValidationLevel) int {
+	switch level {
+	case openspec.ValidationLevelError:
+		return 1
+	case openspec.ValidationLevelWarning:
+		return 2
+	default:
+		return 3
+	}
+}
+
+func specNameFromURI(uri string) string {
+	parts := strings.Split(uri, "/")
+	for i := 0; i+2 < len(parts); i++ {
+		if parts[i] == "specs" && parts[i+2] == "spec.md" {
+			return parts[i+1]
+		}
+	}
+	return strings.TrimSuffix(path.Base(uri), ".md")
 }
 
 func requiredSections(uri string) []string {

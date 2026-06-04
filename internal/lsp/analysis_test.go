@@ -15,6 +15,14 @@ func TestAnalyzeSpecDiagnostics(t *testing.T) {
 	}
 }
 
+func TestAnalyzeSpecValidationDiagnostics(t *testing.T) {
+	text := "# Auth\n\n## Purpose\n\nLet users sign in with passwordless auth.\n\n## Requirements\n\n### Requirement: Login\n\nThe system lets users sign in.\n\n#### Scenario: Login\n\n- WHEN valid credentials are submitted\n- THEN the user is signed in\n"
+	diags := analyze("file:///repo/openspec/specs/auth/spec.md", text)
+	if !hasDiagnostic(diags, "requirements[0].text: must contain SHALL or MUST keyword") {
+		t.Fatalf("missing validation diagnostic: %+v", diags)
+	}
+}
+
 func TestAnalyzeExtensionDiagnostics(t *testing.T) {
 	diags := analyze("file:///repo/openspec/extensions/example-mapping/auth.md", "# Example Mapping\n\n## Rules\n\n## Examples\n")
 	if len(diags) != 2 {
