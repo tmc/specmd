@@ -80,6 +80,13 @@ func (s *Server) documentLinks(uri string) []documentLink {
 		}
 		links = append(links, documentLink{Range: link.Range, Target: docURI})
 	}
+	for _, link := range markdownLinks(s.docs[uri]) {
+		docURI := ""
+		if loc, ok := s.resolveLink(uri, link.Target); ok {
+			docURI = loc.URI
+		}
+		links = append(links, documentLink{Range: link.Range, Target: docURI})
+	}
 	links = append(links, pathLinks(s.docs[uri])...)
 	return links
 }

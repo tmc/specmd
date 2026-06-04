@@ -65,3 +65,67 @@ func TestWikiLinkRangesUseUTF16(t *testing.T) {
 		t.Fatalf("Start.Character = %d, want %d", got, want)
 	}
 }
+
+func TestMarkdownLinksParseRelativeTargets(t *testing.T) {
+	links := markdownLinks("[catalog](../00-object-catalog.md#cross-tier-object-map)\n")
+	if len(links) != 1 {
+		t.Fatalf("len(markdownLinks) = %d, want 1", len(links))
+	}
+	if got, want := links[0].Target.Doc, "../00-object-catalog.md"; got != want {
+		t.Fatalf("Doc = %q, want %q", got, want)
+	}
+	if got, want := links[0].Target.Heading, "cross-tier-object-map"; got != want {
+		t.Fatalf("Heading = %q, want %q", got, want)
+	}
+}
+
+func TestDefinitionsResolveMarkdownLinksAndObjectNames(t *testing.T) {
+	s := NewServer(nil, nil)
+	indexURI := "file:///repo/matrices/relationship-map.md"
+	catalogURI := "file:///repo/00-object-catalog.md"
+	objectURI := "file:///repo/objects/t1-conversation-and-reasoning.md"
+	s.docs[indexURI] = "See [map](../00-object-catalog.md#cross-tier-object-map).\n\n| Thread | Message |\n"
+	s.docs[catalogURI] = "# Catalog\n\n## Cross-tier Object Map\n"
+	s.docs[objectURI] = "# T1\n\n## Thread   *(status: current)*\n"
+
+	locs := s.definitions(indexURI, position{Line: 0, Character: 6})
+	if len(locs) != 1 {
+		t.Fatalf("len(markdown link definitions) = %d, want 1: %+v", len(locs), locs)
+	}
+	if got, want := locs[0].URI, catalogURI; got != want {
+		t.Fatalf("URI = %q, want %q", got, want)
+	}
+	if got, want := locs[0].Range.Start.Line, 2; got != want {
+		t.Fatalf("Range.Start.Line = %d, want %d", got, want)
+	}
+
+	locs = s.definitions(indexURI, position{Line: 2, Character: 3})
+	if len(locs) != 1 {
+		t.Fatalf("len(object name definitions) = %d, want 1: %+v", len(locs), locs)
+	}
+	if got, want := locs[0].URI, objectURI; got != want {
+		t.Fatalf("URI = %q, want %q", got, want)
+	}
+}
+
+func TestReferencesResolveObjectNames(t *testing.T) {
+	s := NewServer(nil, nil)
+	indexURI := "file:///repo/matrices/relationship-map.md"
+	objectURI := "file:///repo/objects/t1-conversation-and-reasoning.md"
+	s.docs[indexURI] = "| Thread | Message |\n| Thread | Run |\n"
+	s.docs[objectURI] = "# T1\n\n## Thread   *(status: current)*\n"
+
+	locs := s.references(indexURI, position{Line: 0, Character: 3})
+	if len(locs) != 3 {
+		t.Fatalf("len(references) = %d, want 3: %+v", len(locs), locs)
+	}
+	var sawDecl bool
+	for _, loc := range locs {
+		if loc.URI == objectURI && loc.Range.Start.Line == 2 {
+			sawDecl = true
+		}
+	}
+	if !sawDecl {
+		t.Fatalf("references did not include object declaration: %+v", locs)
+	}
+}

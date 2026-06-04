@@ -1,12 +1,20 @@
 package lsp
 
 import (
+	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"unicode"
 )
 
 type wikiLink struct {
+	URI    string
+	Range  textRange
+	Target linkTarget
+}
+
+type markdownLink struct {
 	URI    string
 	Range  textRange
 	Target linkTarget
@@ -20,7 +28,15 @@ type linkTarget struct {
 func (s *Server) definitions(uri string, pos position) []location {
 	link, ok := linkAt(s.docs[uri], pos)
 	if !ok {
-		return nil
+		target, ok := plainNameAt(s.docs[uri], pos)
+		if !ok {
+			return nil
+		}
+		loc, ok := s.resolveName(target)
+		if !ok {
+			return nil
+		}
+		return []location{loc}
 	}
 	loc, ok := s.resolveLink(uri, link.Target)
 	if !ok {
@@ -32,7 +48,15 @@ func (s *Server) definitions(uri string, pos position) []location {
 func (s *Server) references(uri string, pos position) []location {
 	target, ok := s.targetAt(uri, pos)
 	if !ok {
-		return nil
+		name, ok := plainNameAt(s.docs[uri], pos)
+		if !ok {
+			return nil
+		}
+		target, ok = s.resolveName(name)
+		if !ok {
+			return nil
+		}
+		return s.nameReferences(name, target)
 	}
 	var locs []location
 	for _, link := range s.allLinks() {
@@ -41,6 +65,19 @@ func (s *Server) references(uri string, pos position) []location {
 			continue
 		}
 		locs = append(locs, location{URI: link.URI, Range: link.Range})
+	}
+	return locs
+}
+
+func (s *Server) nameReferences(name string, target location) []location {
+	var locs []location
+	for uri, text := range s.docs {
+		for _, r := range nameRanges(text, name) {
+			locs = append(locs, location{URI: uri, Range: r})
+		}
+	}
+	if len(locs) == 0 {
+		locs = append(locs, target)
 	}
 	return locs
 }
@@ -61,10 +98,14 @@ func (s *Server) targetAt(uri string, pos position) (location, bool) {
 func (s *Server) resolveLink(fromURI string, target linkTarget) (location, bool) {
 	docURI := fromURI
 	if target.Doc != "" {
-		var ok bool
-		docURI, ok = s.resolveDoc(target.Doc)
-		if !ok {
-			return location{}, false
+		if rel, ok := s.resolveRelativeDoc(fromURI, target.Doc); ok && strings.HasSuffix(strings.ToLower(target.Doc), ".md") {
+			docURI = rel
+		} else {
+			var ok bool
+			docURI, ok = s.resolveDoc(target.Doc)
+			if !ok {
+				return location{}, false
+			}
 		}
 	}
 	text := s.docs[docURI]
@@ -75,7 +116,7 @@ func (s *Server) resolveLink(fromURI string, target linkTarget) (location, bool)
 				return location{URI: docURI, Range: r}, true
 			}
 		}
-		return location{}, false
+		return location{URI: docURI, Range: textRange{}}, true
 	}
 	if h, ok := titleHeading(text); ok {
 		r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
@@ -109,6 +150,9 @@ func (s *Server) allLinks() []wikiLink {
 			link.URI = uri
 			links = append(links, link)
 		}
+		for _, link := range markdownLinks(text) {
+			links = append(links, wikiLink{URI: uri, Range: link.Range, Target: link.Target})
+		}
 	}
 	return links
 }
@@ -120,6 +164,14 @@ func linkAt(text string, pos position) (wikiLink, bool) {
 		}
 		if pos.Character >= link.Range.Start.Character && pos.Character <= link.Range.End.Character {
 			return link, true
+		}
+	}
+	for _, link := range markdownLinks(text) {
+		if pos.Line != link.Range.Start.Line {
+			continue
+		}
+		if pos.Character >= link.Range.Start.Character && pos.Character <= link.Range.End.Character {
+			return wikiLink{Range: link.Range, Target: link.Target}, true
 		}
 	}
 	return wikiLink{}, false
@@ -154,6 +206,41 @@ func wikiLinks(text string) []wikiLink {
 	return links
 }
 
+func markdownLinks(text string) []markdownLink {
+	var links []markdownLink
+	for lineNo, line := range strings.Split(text, "\n") {
+		start := 0
+		for {
+			openLabel := strings.Index(line[start:], "[")
+			if openLabel < 0 {
+				break
+			}
+			openLabel += start
+			closeLabel := strings.Index(line[openLabel+1:], "](")
+			if closeLabel < 0 {
+				break
+			}
+			closeLabel += openLabel + 1
+			openTarget := closeLabel + 2
+			closeTarget := strings.Index(line[openTarget:], ")")
+			if closeTarget < 0 {
+				break
+			}
+			closeTarget += openTarget
+			raw := strings.TrimSpace(line[openTarget:closeTarget])
+			if raw != "" && !strings.Contains(raw, "://") && !strings.HasPrefix(raw, "mailto:") {
+				target := parseLinkTarget(raw)
+				links = append(links, markdownLink{
+					Range:  textRange{Start: position{Line: lineNo, Character: utf16Len(line[:openLabel])}, End: position{Line: lineNo, Character: utf16Len(line[:closeTarget+1])}},
+					Target: target,
+				})
+			}
+			start = closeTarget + 1
+		}
+	}
+	return links
+}
+
 func parseLinkTarget(raw string) linkTarget {
 	raw, _, _ = strings.Cut(raw, "|")
 	raw = strings.TrimSpace(raw)
@@ -173,6 +260,93 @@ func titleHeading(text string) (heading, bool) {
 	return heading{}, false
 }
 
+func (s *Server) resolveName(name string) (location, bool) {
+	for uri, text := range s.docs {
+		for _, h := range headings(text) {
+			if sameName(h.Text, name) {
+				r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
+				return location{URI: uri, Range: r}, true
+			}
+		}
+	}
+	return location{}, false
+}
+
+func plainNameAt(text string, pos position) (string, bool) {
+	lines := strings.Split(text, "\n")
+	if pos.Line < 0 || pos.Line >= len(lines) {
+		return "", false
+	}
+	line := lines[pos.Line]
+	bytePos := byteOffsetForUTF16(line, pos.Character)
+	if bytePos < 0 || bytePos > len(line) {
+		return "", false
+	}
+	start := bytePos
+	for start > 0 && nameByte(line[start-1]) {
+		start--
+	}
+	end := bytePos
+	for end < len(line) && nameByte(line[end]) {
+		end++
+	}
+	name := strings.Trim(line[start:end], " \t|*`")
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
+func nameRanges(text, name string) []textRange {
+	var ranges []textRange
+	for lineNo, line := range strings.Split(text, "\n") {
+		for start := 0; start < len(line); {
+			for start < len(line) && !nameByte(line[start]) {
+				start++
+			}
+			end := start
+			for end < len(line) && nameByte(line[end]) {
+				end++
+			}
+			got := strings.Trim(line[start:end], " \t|*`")
+			if got != "" && sameName(got, name) {
+				ranges = append(ranges, textRange{
+					Start: position{Line: lineNo, Character: utf16Len(line[:start])},
+					End:   position{Line: lineNo, Character: utf16Len(line[:end])},
+				})
+			}
+			if end == start {
+				start++
+			} else {
+				start = end
+			}
+		}
+	}
+	return ranges
+}
+
+func nameByte(b byte) bool {
+	return b == ' ' || b == '/' || b == '-' || b == '_' || b == '&' || b == '\'' || b == '`' || b == '*' || b == ':' || b == '(' || b == ')' || unicode.IsLetter(rune(b)) || unicode.IsDigit(rune(b))
+}
+
+func byteOffsetForUTF16(s string, want int) int {
+	u16 := 0
+	for i, r := range s {
+		if u16 >= want {
+			return i
+		}
+		if r > 0xFFFF {
+			u16 += 2
+		} else {
+			u16++
+		}
+	}
+	if u16 == want {
+		return len(s)
+	}
+	return -1
+}
+
 func sameTarget(a, b location) bool {
 	if a.URI != b.URI {
 		return false
@@ -181,7 +355,7 @@ func sameTarget(a, b location) bool {
 }
 
 func sameName(a, b string) bool {
-	return normName(a) == normName(b)
+	return normName(canonicalName(a)) == normName(canonicalName(b))
 }
 
 func normName(s string) string {
@@ -200,4 +374,35 @@ func normName(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func canonicalName(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.Index(s, "*("); i >= 0 {
+		s = s[:i]
+	}
+	if i := strings.Index(s, "`status:"); i >= 0 {
+		s = s[:i]
+	}
+	s = strings.Trim(s, " \t`*")
+	return s
+}
+
+func (s *Server) resolveRelativeDoc(fromURI, doc string) (string, bool) {
+	if doc == "" {
+		return fromURI, true
+	}
+	if strings.HasPrefix(doc, "file://") {
+		return doc, true
+	}
+	if strings.HasPrefix(doc, "/") {
+		return "file://" + doc, true
+	}
+	u, err := url.Parse(fromURI)
+	if err != nil || u.Scheme != "file" {
+		return "", false
+	}
+	base := filepath.Dir(u.Path)
+	target := filepath.Clean(filepath.Join(base, doc))
+	return (&url.URL{Scheme: "file", Path: target}).String(), true
 }
