@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"path"
 	"sort"
 	"strings"
 )
@@ -73,21 +72,22 @@ func insertAtEnd(text, insert string) textEdit {
 
 func (s *Server) documentLinks(uri string) []documentLink {
 	var links []documentLink
-	for _, link := range wikiLinks(s.docs[uri]) {
+	text := s.text(uri)
+	for _, link := range wikiLinks(text) {
 		docURI := ""
 		if loc, ok := s.resolveLink(uri, link.Target); ok {
 			docURI = loc.URI
 		}
 		links = append(links, documentLink{Range: link.Range, Target: docURI})
 	}
-	for _, link := range markdownLinks(s.docs[uri]) {
+	for _, link := range markdownLinks(text) {
 		docURI := ""
 		if loc, ok := s.resolveLink(uri, link.Target); ok {
 			docURI = loc.URI
 		}
 		links = append(links, documentLink{Range: link.Range, Target: docURI})
 	}
-	links = append(links, pathLinks(s.docs[uri])...)
+	links = append(links, pathLinks(text)...)
 	return links
 }
 
@@ -120,21 +120,11 @@ func pathLinks(text string) []documentLink {
 func (s *Server) workspaceSymbols(query string) []workspaceSymbol {
 	query = strings.ToLower(strings.TrimSpace(query))
 	var out []workspaceSymbol
-	for uri, text := range s.docs {
-		name := strings.TrimSuffix(path.Base(uri), ".md")
-		if h, ok := titleHeading(text); ok {
-			name = h.Text
+	for _, sym := range s.indexedSymbols() {
+		if sym.Reference || !matchSymbol(query, sym.Name) {
+			continue
 		}
-		if matchSymbol(query, name) {
-			out = append(out, workspaceSymbol{Name: name, Kind: symbolKindFile, Location: location{URI: uri, Range: fileRange(text)}})
-		}
-		for _, h := range headings(text) {
-			kind := headingSymbolKind(uri, h.Text)
-			r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
-			if matchSymbol(query, h.Text) {
-				out = append(out, workspaceSymbol{Name: h.Text, Kind: kind, Location: location{URI: uri, Range: r}})
-			}
-		}
+		out = append(out, workspaceSymbol{Name: sym.Name, Kind: symbolKindForRole(sym.Role), Location: location{URI: sym.URI, Range: sym.Range}})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Location.URI != out[j].Location.URI {
@@ -143,6 +133,23 @@ func (s *Server) workspaceSymbols(query string) []workspaceSymbol {
 		return out[i].Location.Range.Start.Line < out[j].Location.Range.Start.Line
 	})
 	return out
+}
+
+func symbolKindForRole(role symbolRole) int {
+	switch role {
+	case symbolDocument, symbolSpec, symbolChange, symbolDelta:
+		return symbolKindFile
+	case symbolRequirement:
+		return symbolKindMethod
+	case symbolScenario:
+		return symbolKindString
+	case symbolObject, symbolObjectRow:
+		return symbolKindClass
+	case symbolExtension:
+		return symbolKindClass
+	default:
+		return symbolKindNamespace
+	}
 }
 
 func matchSymbol(query, name string) bool {

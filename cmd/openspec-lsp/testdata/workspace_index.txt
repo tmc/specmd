@@ -1,0 +1,30 @@
+lsp session.jsonl
+stdout '"uri":"file://'
+stdout 'objects/t6-quality-and-self-improvement.md"'
+stdout '"line":2'
+stdout 'matrices/relationship-map.md'
+stdout '"catalog object has no matching object detail heading"'
+stdout '"missing markdown heading target"'
+
+-- session.jsonl --
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootPath":"${WORK}"}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/definition","params":{"textDocument":{"uri":"file://${WORK}/00-object-catalog.md"},"position":{"line":4,"character":5}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/references","params":{"textDocument":{"uri":"file://${WORK}/00-object-catalog.md"},"position":{"line":4,"character":5},"context":{"includeDeclaration":true}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file://${WORK}/00-object-catalog.md","languageId":"markdown","version":2,"text":"# Catalog\n\n| Object | One-line definition |\n|---|---|\n| **Variant** | Alternate generated thread. |\n| **Missing Detail** | No card yet. |\n\nSee [bad heading](objects/t6-quality-and-self-improvement.md#missing-heading).\n"}}}
+{"jsonrpc":"2.0","id":4,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}
+
+-- 00-object-catalog.md --
+# Catalog
+
+| Object | One-line definition |
+|---|---|
+| **Variant** | Alternate generated thread. |
+
+-- objects/t6-quality-and-self-improvement.md --
+# T6
+
+## Variant   `status: current`
+
+-- matrices/relationship-map.md --
+| Variant | Thread |

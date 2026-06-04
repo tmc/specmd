@@ -3,6 +3,7 @@ package lsp
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -258,6 +259,49 @@ func completions(uri, text string) []completionItem {
 	return items
 }
 
+func (s *Server) completions(uri, text string, pos position) []completionItem {
+	items := completions(uri, text)
+	labels := make(map[string]bool)
+	for _, item := range items {
+		labels[item.Label] = true
+	}
+	for _, item := range s.indexCompletions(uri, text, pos) {
+		items = appendCompletion(items, labels, item)
+	}
+	return items
+}
+
+func (s *Server) indexCompletions(uri, text string, pos position) []completionItem {
+	line := lineAt(text, pos.Line)
+	var items []completionItem
+	prefix := line
+	if off := byteOffsetForUTF16(line, max(pos.Character, 0)); off >= 0 && off < len(line) {
+		prefix = line[:off]
+	}
+	if strings.Contains(prefix, "[") {
+		for _, doc := range s.indexedDocs() {
+			label := relativeLabel(uri, doc.URI)
+			if label != "" {
+				items = append(items, completionItem{Label: label, Kind: completionKindText, Detail: "Markdown file", InsertText: label})
+			}
+			for _, sym := range doc.Symbols {
+				if sym.Role == symbolHeading || sym.Role == symbolObject {
+					target := label + "#" + slug(sym.Canon)
+					items = append(items, completionItem{Label: target, Kind: completionKindText, Detail: "Markdown heading", InsertText: target})
+				}
+			}
+		}
+	}
+	if strings.Contains(line, "|") {
+		for _, sym := range s.indexedSymbols() {
+			if sym.Role == symbolObject && !sym.Reference {
+				items = append(items, completionItem{Label: sym.Canon, Kind: completionKindText, Detail: "OOUX object", InsertText: sym.Canon})
+			}
+		}
+	}
+	return items
+}
+
 func coreCompletions(uri string) []completionItem {
 	items := []completionItem{
 		{Label: "## Purpose", Kind: completionKindSnippet, Detail: "OpenSpec spec section", InsertText: "## Purpose\n"},
@@ -455,6 +499,77 @@ func hoverAt(uri, text string, pos position) string {
 		}
 	}
 	return hoverFor(uri)
+}
+
+func (s *Server) hoverAt(uri, text string, pos position) string {
+	if name, ok := plainNameAt(text, pos); ok {
+		if sym, ok := s.objectSymbol(name); ok {
+			if row, ok := s.objectRow(sym.Canon); ok && row.Detail != "" {
+				return row.Canon + "\n\n" + row.Detail + "\n\nSource: " + path.Base(row.URI)
+			}
+			return sym.Canon + "\n\nSource: " + path.Base(sym.URI)
+		}
+	}
+	return hoverAt(uri, text, pos)
+}
+
+func (s *Server) objectSymbol(name string) (indexedSymbol, bool) {
+	norm := normName(canonicalName(name))
+	for _, sym := range s.indexedSymbols() {
+		if sym.Norm == norm && sym.Role == symbolObject && !sym.Reference {
+			return sym, true
+		}
+	}
+	return indexedSymbol{}, false
+}
+
+func (s *Server) objectRow(name string) (indexedSymbol, bool) {
+	norm := normName(canonicalName(name))
+	for _, sym := range s.indexedSymbols() {
+		if sym.Norm == norm && sym.Role == symbolObjectRow {
+			return sym, true
+		}
+	}
+	return indexedSymbol{}, false
+}
+
+func lineAt(text string, line int) string {
+	lines := strings.Split(text, "\n")
+	if line < 0 || line >= len(lines) {
+		return ""
+	}
+	return lines[line]
+}
+
+func relativeLabel(fromURI, toURI string) string {
+	from, ok1 := pathFromURI(fromURI)
+	to, ok2 := pathFromURI(toURI)
+	if !ok1 || !ok2 || from == "" || to == "" {
+		return ""
+	}
+	rel, err := filepath.Rel(filepath.Dir(from), to)
+	if err != nil {
+		return ""
+	}
+	return filepath.ToSlash(rel)
+}
+
+func slug(s string) string {
+	return strings.ReplaceAll(normName(s), " ", "-")
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func sectionHover(uri, name string) string {

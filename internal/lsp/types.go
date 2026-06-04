@@ -9,6 +9,17 @@ type request struct {
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
+type initializeParams struct {
+	RootURI          string            `json:"rootUri,omitempty"`
+	RootPath         string            `json:"rootPath,omitempty"`
+	WorkspaceFolders []workspaceFolder `json:"workspaceFolders,omitempty"`
+}
+
+type workspaceFolder struct {
+	URI  string `json:"uri"`
+	Name string `json:"name,omitempty"`
+}
+
 type response struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`

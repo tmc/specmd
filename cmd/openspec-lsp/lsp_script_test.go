@@ -38,12 +38,13 @@ func lspCmd(bin string) script.Cmd {
 			if len(args) != 1 {
 				return nil, script.ErrUsage
 			}
-			input, err := jsonLinesToFrames(s.Path(args[0]))
+			input, err := jsonLinesToFrames(s.Path(args[0]), map[string]string{"${WORK}": filepath.ToSlash(s.Path("."))})
 			if err != nil {
 				return nil, err
 			}
 			return func(*script.State) (string, string, error) {
 				cmd := exec.CommandContext(s.Context(), bin)
+				cmd.Dir = s.Path(".")
 				cmd.Stdin = bytes.NewReader(input)
 				out, err := cmd.CombinedOutput()
 				if err != nil {
@@ -59,7 +60,7 @@ func lspCmd(bin string) script.Cmd {
 	)
 }
 
-func jsonLinesToFrames(path string) ([]byte, error) {
+func jsonLinesToFrames(path string, repl map[string]string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -71,6 +72,9 @@ func jsonLinesToFrames(path string) ([]byte, error) {
 		line := strings.TrimSpace(scan.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
+		}
+		for old, new := range repl {
+			line = strings.ReplaceAll(line, old, new)
 		}
 		if !json.Valid([]byte(line)) {
 			return nil, fmt.Errorf("%s: invalid json line: %s", path, line)

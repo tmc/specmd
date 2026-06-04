@@ -15,9 +15,10 @@ const maxMessageSize = 16 << 20
 // Server is a small stdio Language Server Protocol implementation for
 // OpenSpec Markdown documents.
 type Server struct {
-	in   *bufio.Reader
-	out  io.Writer
-	docs map[string]string
+	in    *bufio.Reader
+	out   io.Writer
+	docs  map[string]string
+	index workspaceIndex
 }
 
 // NewServer returns a server that reads LSP messages from in and writes
@@ -53,6 +54,9 @@ func (s *Server) Run() error {
 func (s *Server) handle(req request) error {
 	switch req.Method {
 	case "initialize":
+		var p initializeParams
+		_ = json.Unmarshal(req.Params, &p)
+		s.setRoot(p)
 		return s.respond(req.ID, map[string]any{
 			"capabilities": map[string]any{
 				"textDocumentSync":        map[string]any{"openClose": true, "change": 1},
@@ -79,6 +83,7 @@ func (s *Server) handle(req request) error {
 			return nil
 		}
 		s.docs[p.TextDocument.URI] = p.TextDocument.Text
+		s.indexDirty(p.TextDocument.URI)
 		return s.publishDiagnostics(p.TextDocument.URI)
 	case "textDocument/didChange":
 		var p didChangeParams
@@ -87,6 +92,7 @@ func (s *Server) handle(req request) error {
 		}
 		if len(p.ContentChanges) > 0 {
 			s.docs[p.TextDocument.URI] = p.ContentChanges[len(p.ContentChanges)-1].Text
+			s.indexDirty(p.TextDocument.URI)
 		}
 		return s.publishDiagnostics(p.TextDocument.URI)
 	case "textDocument/didClose":
@@ -95,25 +101,26 @@ func (s *Server) handle(req request) error {
 			return nil
 		}
 		delete(s.docs, p.TextDocument.URI)
+		s.indexDirty(p.TextDocument.URI)
 		return s.notify("textDocument/publishDiagnostics", publishDiagnosticsParams{URI: p.TextDocument.URI, Diagnostics: []diagnostic{}})
 	case "textDocument/documentSymbol":
 		var p textDocumentParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, []documentSymbol{})
 		}
-		return s.respond(req.ID, symbols(s.docs[p.TextDocument.URI]))
+		return s.respond(req.ID, symbols(s.text(p.TextDocument.URI)))
 	case "textDocument/completion":
 		var p textDocumentPositionParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, completionList{})
 		}
-		return s.respond(req.ID, completionList{Items: completions(p.TextDocument.URI, s.docs[p.TextDocument.URI])})
+		return s.respond(req.ID, completionList{Items: s.completions(p.TextDocument.URI, s.text(p.TextDocument.URI), p.Position)})
 	case "textDocument/hover":
 		var p textDocumentPositionParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, nil)
 		}
-		return s.respond(req.ID, hover{Contents: markupContent{Kind: "markdown", Value: hoverAt(p.TextDocument.URI, s.docs[p.TextDocument.URI], p.Position)}})
+		return s.respond(req.ID, hover{Contents: markupContent{Kind: "markdown", Value: s.hoverAt(p.TextDocument.URI, s.text(p.TextDocument.URI), p.Position)}})
 	case "textDocument/definition":
 		var p textDocumentPositionParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
@@ -131,7 +138,7 @@ func (s *Server) handle(req request) error {
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, []codeAction{})
 		}
-		return s.respond(req.ID, codeActions(p.TextDocument.URI, s.docs[p.TextDocument.URI], p.Context.Diagnostics))
+		return s.respond(req.ID, codeActions(p.TextDocument.URI, s.text(p.TextDocument.URI), p.Context.Diagnostics))
 	case "textDocument/documentLink":
 		var p textDocumentParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
@@ -149,13 +156,13 @@ func (s *Server) handle(req request) error {
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, []foldingRange{})
 		}
-		return s.respond(req.ID, foldingRanges(s.docs[p.TextDocument.URI]))
+		return s.respond(req.ID, foldingRanges(s.text(p.TextDocument.URI)))
 	case "textDocument/selectionRange":
 		var p selectionRangeParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, []selectionRange{})
 		}
-		return s.respond(req.ID, selectionRanges(s.docs[p.TextDocument.URI], p.Positions))
+		return s.respond(req.ID, selectionRanges(s.text(p.TextDocument.URI), p.Positions))
 	default:
 		if len(req.ID) == 0 {
 			return nil
@@ -165,7 +172,8 @@ func (s *Server) handle(req request) error {
 }
 
 func (s *Server) publishDiagnostics(uri string) error {
-	diags := analyze(uri, s.docs[uri])
+	diags := analyze(uri, s.text(uri))
+	diags = append(diags, s.graphDiagnostics(uri)...)
 	if diags == nil {
 		diags = []diagnostic{}
 	}

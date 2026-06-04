@@ -26,9 +26,10 @@ type linkTarget struct {
 }
 
 func (s *Server) definitions(uri string, pos position) []location {
-	link, ok := linkAt(s.docs[uri], pos)
+	text := s.text(uri)
+	link, ok := linkAt(text, pos)
 	if !ok {
-		target, ok := plainNameAt(s.docs[uri], pos)
+		target, ok := plainNameAt(text, pos)
 		if !ok {
 			return nil
 		}
@@ -48,7 +49,7 @@ func (s *Server) definitions(uri string, pos position) []location {
 func (s *Server) references(uri string, pos position) []location {
 	target, ok := s.targetAt(uri, pos)
 	if !ok {
-		name, ok := plainNameAt(s.docs[uri], pos)
+		name, ok := plainNameAt(s.text(uri), pos)
 		if !ok {
 			return nil
 		}
@@ -71,9 +72,10 @@ func (s *Server) references(uri string, pos position) []location {
 
 func (s *Server) nameReferences(name string, target location) []location {
 	var locs []location
-	for uri, text := range s.docs {
-		for _, r := range nameRanges(text, name) {
-			locs = append(locs, location{URI: uri, Range: r})
+	norm := normName(canonicalName(name))
+	for _, sym := range s.indexedSymbols() {
+		if sym.Norm == norm && (sym.Role == symbolObject || sym.Role == symbolObjectRow) {
+			locs = append(locs, location{URI: sym.URI, Range: sym.Range})
 		}
 	}
 	if len(locs) == 0 {
@@ -83,10 +85,11 @@ func (s *Server) nameReferences(name string, target location) []location {
 }
 
 func (s *Server) targetAt(uri string, pos position) (location, bool) {
-	if link, ok := linkAt(s.docs[uri], pos); ok {
+	text := s.text(uri)
+	if link, ok := linkAt(text, pos); ok {
 		return s.resolveLink(uri, link.Target)
 	}
-	for _, h := range headings(s.docs[uri]) {
+	for _, h := range headings(text) {
 		if h.Line == pos.Line {
 			r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
 			return location{URI: uri, Range: r}, true
@@ -109,6 +112,9 @@ func (s *Server) resolveLink(fromURI string, target linkTarget) (location, bool)
 		}
 	}
 	text := s.docs[docURI]
+	if text == "" {
+		text = s.text(docURI)
+	}
 	if target.Heading != "" {
 		for _, h := range headings(text) {
 			if sameName(h.Text, target.Heading) {
@@ -127,12 +133,13 @@ func (s *Server) resolveLink(fromURI string, target linkTarget) (location, bool)
 
 func (s *Server) resolveDoc(name string) (string, bool) {
 	want := normName(strings.TrimSuffix(name, ".md"))
-	for uri, text := range s.docs {
-		if h, ok := titleHeading(text); ok && normName(h.Text) == want {
-			return uri, true
-		}
+	for _, doc := range s.indexedDocs() {
+		uri, text := doc.URI, doc.Text
 		base := strings.TrimSuffix(path.Base(uri), ".md")
 		if normName(base) == want {
+			return uri, true
+		}
+		if h, ok := titleHeading(text); ok && normName(h.Text) == want {
 			return uri, true
 		}
 		noExt := strings.TrimSuffix(uri, ".md")
@@ -145,13 +152,9 @@ func (s *Server) resolveDoc(name string) (string, bool) {
 
 func (s *Server) allLinks() []wikiLink {
 	var links []wikiLink
-	for uri, text := range s.docs {
-		for _, link := range wikiLinks(text) {
-			link.URI = uri
-			links = append(links, link)
-		}
-		for _, link := range markdownLinks(text) {
-			links = append(links, wikiLink{URI: uri, Range: link.Range, Target: link.Target})
+	for _, doc := range s.indexedDocs() {
+		for _, link := range doc.Links {
+			links = append(links, wikiLink{URI: link.URI, Range: link.Range, Target: link.Target})
 		}
 	}
 	return links
@@ -261,12 +264,13 @@ func titleHeading(text string) (heading, bool) {
 }
 
 func (s *Server) resolveName(name string) (location, bool) {
-	for uri, text := range s.docs {
-		for _, h := range headings(text) {
-			if sameName(h.Text, name) {
-				r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
-				return location{URI: uri, Range: r}, true
+	norm := normName(canonicalName(name))
+	for _, role := range []symbolRole{symbolObject, symbolObjectRow, symbolHeading} {
+		for _, sym := range s.indexedSymbols() {
+			if sym.Reference || sym.Norm != norm || sym.Role != role {
+				continue
 			}
+			return location{URI: sym.URI, Range: sym.Range}, true
 		}
 	}
 	return location{}, false
