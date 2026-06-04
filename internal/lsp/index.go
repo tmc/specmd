@@ -36,6 +36,8 @@ type indexedSymbol struct {
 	Family    string
 	Range     textRange
 	Detail    string
+	Domain    string
+	Status    string
 	Reference bool
 }
 
@@ -49,6 +51,8 @@ type indexedDoc struct {
 	URI     string
 	Path    string
 	Text    string
+	Meta    map[string]string
+	Tags    []indexedSymbol
 	Symbols []indexedSymbol
 	Links   []indexedLink
 }
@@ -177,14 +181,16 @@ func uriFromPath(p string) string {
 
 func indexDoc(uri, p, text string) indexedDoc {
 	doc := indexedDoc{URI: uri, Path: p, Text: text}
+	doc.Meta = frontMatter(text)
 	doc.Symbols = append(doc.Symbols, documentSymbolFor(uri, text))
+	doc.Symbols = append(doc.Symbols, tagSymbols(uri, text)...)
 	for _, h := range headings(text) {
 		role := symbolHeadingRole(uri, h.Text)
 		r := textRange{Start: position{Line: h.Line, Character: 0}, End: position{Line: h.Line, Character: h.End}}
 		name := canonicalName(h.Text)
 		doc.Symbols = append(doc.Symbols, indexedSymbol{URI: uri, Name: h.Text, Canon: name, Norm: normName(name), Role: role, Family: artifactFamily(uri), Range: r})
 		if objectDetailHeading(uri, h) {
-			doc.Symbols = append(doc.Symbols, indexedSymbol{URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolObject, Family: "ooux", Range: r})
+			doc.Symbols = append(doc.Symbols, indexedSymbol{URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolObject, Family: "ooux", Range: r, Status: headingStatus(h.Text)})
 		}
 	}
 	doc.Symbols = append(doc.Symbols, objectRows(uri, text)...)
@@ -193,6 +199,10 @@ func indexDoc(uri, p, text string) indexedDoc {
 		doc.Links = append(doc.Links, indexedLink{URI: uri, Range: link.Range, Target: link.Target})
 	}
 	for _, link := range markdownLinks(text) {
+		doc.Links = append(doc.Links, indexedLink{URI: uri, Range: link.Range, Target: link.Target})
+	}
+	defs := referenceDefinitions(text)
+	for _, link := range referenceLinks(text, defs) {
 		doc.Links = append(doc.Links, indexedLink{URI: uri, Range: link.Range, Target: link.Target})
 	}
 	for _, link := range pathLinks(text) {
@@ -286,12 +296,79 @@ func objectRows(uri, text string) []indexedSymbol {
 			start = 0
 		}
 		detail := strings.TrimSpace(stripMarkdown(cells[1]))
+		domain := ""
+		status := ""
+		if len(cells) > 2 {
+			domain = stripMarkdown(cells[2])
+		}
+		if len(cells) > 3 {
+			status = stripMarkdown(cells[3])
+		}
 		out = append(out, indexedSymbol{
-			URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolObjectRow, Family: "ooux", Detail: detail,
+			URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolObjectRow, Family: "ooux", Detail: detail, Domain: domain, Status: status,
 			Range: textRange{Start: position{Line: lineNo, Character: utf16Len(line[:start])}, End: position{Line: lineNo, Character: utf16Len(line[:start+len(cells[0])])}},
 		})
 	}
 	return out
+}
+
+func frontMatter(text string) map[string]string {
+	lines := strings.Split(text, "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return nil
+	}
+	meta := make(map[string]string)
+	for _, line := range lines[1:] {
+		if strings.TrimSpace(line) == "---" {
+			break
+		}
+		k, v, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		meta[strings.ToLower(strings.TrimSpace(k))] = strings.Trim(strings.TrimSpace(v), `"'`)
+	}
+	return meta
+}
+
+func tagSymbols(uri, text string) []indexedSymbol {
+	var out []indexedSymbol
+	for lineNo, line := range strings.Split(text, "\n") {
+		for start := 0; start < len(line); {
+			i := strings.Index(line[start:], "#")
+			if i < 0 {
+				break
+			}
+			i += start
+			if i+1 >= len(line) || line[i+1] == ' ' {
+				start = i + 1
+				continue
+			}
+			j := i + 1
+			for j < len(line) && (nameByte(line[j]) || line[j] == '.') {
+				j++
+			}
+			name := line[i:j]
+			out = append(out, indexedSymbol{
+				URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolHeading, Family: "tag",
+				Range: textRange{Start: position{Line: lineNo, Character: utf16Len(line[:i])}, End: position{Line: lineNo, Character: utf16Len(line[:j])}},
+			})
+			start = j
+		}
+	}
+	return out
+}
+
+func headingStatus(s string) string {
+	if i := strings.Index(s, "status:"); i >= 0 {
+		rest := strings.TrimSpace(s[i+len("status:"):])
+		rest = strings.Trim(rest, "`*) \t")
+		fields := strings.Fields(rest)
+		if len(fields) > 0 {
+			return strings.Trim(fields[0], "`*)")
+		}
+	}
+	return ""
 }
 
 func structuredMentions(uri, text string) []indexedSymbol {
@@ -310,7 +387,7 @@ func structuredMentions(uri, text string) []indexedSymbol {
 			continue
 		}
 		if name, start, ok := mermaidName(line); ok {
-			out = append(out, indexedSymbol{URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolObject, Family: "ooux", Reference: true, Range: textRange{Start: position{Line: lineNo, Character: utf16Len(line[:start])}, End: position{Line: lineNo, Character: utf16Len(line[:start+len(name)])}}})
+			out = append(out, indexedSymbol{URI: uri, Name: name, Canon: name, Norm: normName(name), Role: symbolObject, Family: "mermaid", Reference: true, Range: textRange{Start: position{Line: lineNo, Character: utf16Len(line[:start])}, End: position{Line: lineNo, Character: utf16Len(line[:start+len(name)])}}})
 		}
 	}
 	return out
@@ -409,13 +486,15 @@ func (s *Server) graphDiagnostics(uri string) []diagnostic {
 			out = append(out, diag(link.Range.Start.Line, link.Range.Start.Character, 2, "missing markdown heading target", "link-heading"))
 		}
 	}
-	if !strings.HasSuffix(uri, "/00-object-catalog.md") && !strings.Contains(uri, "/objects/") {
-		return sortDiagnostics(out)
+	if strings.HasSuffix(uri, "/00-object-catalog.md") || strings.Contains(uri, "/objects/") {
+		for _, d := range s.duplicateObjectDiagnostics(uri) {
+			out = append(out, d)
+		}
+		for _, d := range s.catalogObjectDiagnostics(uri) {
+			out = append(out, d)
+		}
 	}
-	for _, d := range s.duplicateObjectDiagnostics(uri) {
-		out = append(out, d)
-	}
-	for _, d := range s.catalogObjectDiagnostics(uri) {
+	for _, d := range s.oouxIntegrityDiagnostics(uri) {
 		out = append(out, d)
 	}
 	return sortDiagnostics(out)
@@ -484,6 +563,75 @@ func (s *Server) catalogObjectDiagnostics(uri string) []diagnostic {
 		}
 	}
 	return out
+}
+
+func (s *Server) oouxIntegrityDiagnostics(uri string) []diagnostic {
+	var out []diagnostic
+	rows := make(map[string]indexedSymbol)
+	objects := make(map[string]indexedSymbol)
+	mentions := make(map[string][]indexedSymbol)
+	cta := make(map[string]bool)
+	for _, sym := range s.indexedSymbols() {
+		switch {
+		case sym.Role == symbolObjectRow:
+			rows[sym.Norm] = sym
+		case sym.Role == symbolObject && !sym.Reference:
+			objects[sym.Norm] = sym
+		case sym.Role == symbolObject && sym.Reference:
+			mentions[sym.Norm] = append(mentions[sym.Norm], sym)
+			if strings.Contains(sym.URI, "/cta-matrix") {
+				cta[sym.Norm] = true
+			}
+		}
+	}
+	for norm, obj := range objects {
+		row, ok := rows[norm]
+		if !ok {
+			continue
+		}
+		if simpleStatus(row.Status) && simpleStatus(obj.Status) && !strings.EqualFold(row.Status, obj.Status) && (row.URI == uri || obj.URI == uri) {
+			out = append(out, diagForSymbol(uri, row, obj, "object status differs from catalog row", "object-status-mismatch"))
+		}
+	}
+	for norm, list := range mentions {
+		if _, ok := rows[norm]; ok {
+			continue
+		}
+		for _, sym := range list {
+			if sym.Family == "mermaid" {
+				continue
+			}
+			if sym.URI == uri {
+				out = append(out, diag(sym.Range.Start.Line, sym.Range.Start.Character, 2, "referenced ooux object is missing from catalog", "object-missing-catalog-row"))
+			}
+		}
+	}
+	for norm, row := range rows {
+		if !strings.EqualFold(row.Status, "current") {
+			continue
+		}
+		if !cta[norm] && row.URI == uri {
+			out = append(out, diag(row.Range.Start.Line, row.Range.Start.Character, 2, "current ooux object has no cta row", "object-missing-cta"))
+		}
+	}
+	return out
+}
+
+func simpleStatus(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "current", "planned", "deprecated", "removed":
+		return true
+	default:
+		return false
+	}
+}
+
+func diagForSymbol(uri string, a, b indexedSymbol, msg, code string) diagnostic {
+	sym := a
+	if b.URI == uri {
+		sym = b
+	}
+	return diag(sym.Range.Start.Line, sym.Range.Start.Character, 2, msg, code)
 }
 
 func sortDiagnostics(diags []diagnostic) []diagnostic {

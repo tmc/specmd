@@ -63,11 +63,14 @@ func (s *Server) handle(req request) error {
 				"documentSymbolProvider":  true,
 				"definitionProvider":      true,
 				"referencesProvider":      true,
+				"renameProvider":          map[string]any{"prepareProvider": true},
 				"codeActionProvider":      true,
+				"codeLensProvider":        map[string]any{},
 				"documentLinkProvider":    map[string]any{},
 				"workspaceSymbolProvider": true,
 				"foldingRangeProvider":    true,
 				"selectionRangeProvider":  true,
+				"inlayHintProvider":       true,
 				"completionProvider": map[string]any{
 					"triggerCharacters": []string{"#", "-", ":"},
 				},
@@ -103,6 +106,13 @@ func (s *Server) handle(req request) error {
 		delete(s.docs, p.TextDocument.URI)
 		s.indexDirty(p.TextDocument.URI)
 		return s.notify("textDocument/publishDiagnostics", publishDiagnosticsParams{URI: p.TextDocument.URI, Diagnostics: []diagnostic{}})
+	case "workspace/didChangeWatchedFiles":
+		var p didChangeWatchedFilesParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return nil
+		}
+		s.index.dirty = true
+		return nil
 	case "textDocument/documentSymbol":
 		var p textDocumentParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
@@ -133,12 +143,36 @@ func (s *Server) handle(req request) error {
 			return s.respond(req.ID, []location{})
 		}
 		return s.respond(req.ID, s.references(p.TextDocument.URI, p.Position))
+	case "textDocument/prepareRename":
+		var p textDocumentPositionParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, nil)
+		}
+		return s.respond(req.ID, s.prepareRename(p.TextDocument.URI, p.Position))
+	case "textDocument/rename":
+		var p renameParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, workspaceEdit{})
+		}
+		return s.respond(req.ID, s.rename(p.TextDocument.URI, p.Position, p.NewName))
 	case "textDocument/codeAction":
 		var p codeActionParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return s.respond(req.ID, []codeAction{})
 		}
-		return s.respond(req.ID, codeActions(p.TextDocument.URI, s.text(p.TextDocument.URI), p.Context.Diagnostics))
+		return s.respond(req.ID, s.codeActions(p.TextDocument.URI, s.text(p.TextDocument.URI), p.Context.Diagnostics))
+	case "textDocument/codeLens":
+		var p codeLensParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []codeLens{})
+		}
+		return s.respond(req.ID, s.codeLens(p.TextDocument.URI))
+	case "textDocument/inlayHint":
+		var p inlayHintParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []inlayHint{})
+		}
+		return s.respond(req.ID, s.inlayHints(p.TextDocument.URI, p.Range))
 	case "textDocument/documentLink":
 		var p textDocumentParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {

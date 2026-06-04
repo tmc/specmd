@@ -247,16 +247,19 @@ Useful editor checks:
 | `textDocument/hover` | now | known sections, extension families, and indexed OOUX object details |
 | `textDocument/definition` | now | workspace Markdown/wiki links and known object names |
 | `textDocument/references` | now | workspace Markdown/wiki links and known object references |
-| `textDocument/codeAction` | now | safe section insertion and heading fixes |
+| `textDocument/rename` | now | OOUX object names and explicit link targets with conservative workspace edits |
+| `textDocument/prepareRename` | now | returns the current rename range when supported |
+| `textDocument/codeAction` | now | section insertion, heading fixes, link-target fixes, and reference-definition cleanup |
+| `textDocument/codeLens` | now | reference counts for indexed headings and OOUX objects |
+| `textDocument/inlayHint` | now | reference-count hints for indexed headings and OOUX objects |
 | `textDocument/documentLink` | now | Markdown links, wiki links, and local `openspec/...` paths |
 | `workspace/symbol` | now | indexed documents, headings, specs, changes, extensions, and OOUX objects |
+| `workspace/didChangeWatchedFiles` | now | marks the workspace index dirty for lazy refresh |
 | `textDocument/foldingRange` | now | Markdown heading regions |
 | `textDocument/selectionRange` | now | heading-to-document expansion |
 | `workspace/configuration` | useful later | only if editor-neutral settings become necessary |
-| `textDocument/rename` | useful later | object names, requirement names, and link targets after reference precision improves |
 | `textDocument/formatting` | useful later | canonical skeleton cleanup |
 | semantic tokens | useful later | only if it materially improves readability |
-| watched files | useful later | refresh the index incrementally if needed |
 | workspace folders | useful later | single-root indexing is enough for now |
 
 Current behavior:
@@ -265,28 +268,42 @@ Current behavior:
   extension families
 - heading diagnostics catch non-breaking spaces after Markdown `#`
 - graph diagnostics warn about broken local Markdown links, missing heading
-  fragments, duplicate OOUX object names, catalog rows without object cards, and
-  object cards without catalog rows
+  fragments, ambiguous link targets, duplicate OOUX object names, duplicate
+  catalog rows without object cards, object cards without catalog rows,
+  catalog/detail status mismatches, referenced objects missing from the
+  catalog, and current objects missing CTA rows
 - completion suggests missing required sections before general OpenSpec
   headings, plus requirement blocks, scenario fields, delta blocks, and
   extension-specific fields or subheadings
 - completion also suggests indexed Markdown files/headings while typing links
-  and known OOUX objects in table-like rows
+  and known OOUX objects, domains, statuses, and Markdown tags in appropriate
+  contexts
 - document symbols are Markdown headings
 - hover describes known sections, the document extension family, or an indexed
-  OOUX object with its catalog definition when available
+  OOUX object with its catalog definition/status/domain when available
+- hover on a local link previews the target document heading and source file
+- hover near YAML front matter shows indexed metadata such as title, status,
+  owner, domain, and last reviewed date
 - definitions and references resolve Obsidian-style `[[target]]`,
   `[[target#heading]]`, `[[#heading]]`, and aliased `[[target|label]]` links
   across the indexed workspace
 - definitions and references resolve standard relative Markdown links such as
   `[map](../00-object-catalog.md#cross-tier-object-map)`
+- definitions and references resolve reference-style Markdown links such as
+  `[catalog][cat]` with `[cat]: 00-object-catalog.md#objects`
 - definitions on known OOUX object names such as `Variant` prefer the object
   detail heading, then the catalog row, then other heading matches
+- rename edits update known OOUX object names across object cards, catalog
+  rows, matrices, and other structured mentions
 - code actions return workspace edits for missing `## Purpose`,
   missing `## Requirements`, common `## Requiement` typo fixes, and
   requirement/scenario skeleton insertion
+- code actions can create a missing heading target, update a stale heading
+  fragment to the document heading, extract an inline Markdown link into a
+  reference definition, and remove duplicate or unused reference definitions
 - document links return ranges for Markdown links, wiki links, and literal local
   `openspec/...` paths
+- code lens and inlay hints expose reference counts without adding a graph UI
 - workspace symbols search indexed Markdown files under the LSP root
 
 ## Workspace Index
@@ -299,10 +316,12 @@ outputs, generated editor outputs, binary files, invalid UTF-8, and files over
 - document symbols and artifact family
 - Markdown headings and normalized heading slugs
 - standard Markdown links and Obsidian-style wiki links
+- reference-style Markdown links and reference definitions
 - OpenSpec specs, changes, deltas, and extension files by path
 - OOUX object detail headings under `objects/`
 - OOUX object catalog rows in `00-object-catalog.md`
 - structured object mentions in Markdown tables and simple Mermaid edge lines
+- YAML-style front matter fields and Markdown tags
 
 Open buffers are authoritative. When an editor sends `didOpen` or `didChange`,
 the in-memory document replaces the on-disk snapshot for navigation,
@@ -356,15 +375,17 @@ as the workspace. Expected checks:
   and other structured mentions
 - workspace symbols find `Variant`, `Forecast`, and `Thread`
 - document links in `INDEX.md` target local Markdown files
+- rename on `Variant` produces edits in the catalog, object card, and matrices
+- reference counts appear for object headings in clients that show code lens or
+  inlay hints
 - graph diagnostics avoid irrelevant external URL checks and focus on local
   Markdown/spec navigation issues
 
 Useful later:
 
 - workspace configuration for enabling or disabling extension families
-- file watching if index refresh on unopened file changes becomes necessary
-- rename support for object names, requirements, and link targets
 - formatting support for normalized section skeletons
+- semantic tokens if they materially improve readability
 
 Out of scope for this package:
 

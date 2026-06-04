@@ -20,6 +20,12 @@ type markdownLink struct {
 	Target linkTarget
 }
 
+type referenceDefinition struct {
+	Label  string
+	Range  textRange
+	Target linkTarget
+}
+
 type linkTarget struct {
 	Doc     string
 	Heading string
@@ -177,6 +183,15 @@ func linkAt(text string, pos position) (wikiLink, bool) {
 			return wikiLink{Range: link.Range, Target: link.Target}, true
 		}
 	}
+	defs := referenceDefinitions(text)
+	for _, link := range referenceLinks(text, defs) {
+		if pos.Line != link.Range.Start.Line {
+			continue
+		}
+		if pos.Character >= link.Range.Start.Character && pos.Character <= link.Range.End.Character {
+			return wikiLink{Range: link.Range, Target: link.Target}, true
+		}
+	}
 	return wikiLink{}, false
 }
 
@@ -239,6 +254,74 @@ func markdownLinks(text string) []markdownLink {
 				})
 			}
 			start = closeTarget + 1
+		}
+	}
+	return links
+}
+
+func referenceDefinitions(text string) map[string]referenceDefinition {
+	defs := make(map[string]referenceDefinition)
+	for lineNo, line := range strings.Split(text, "\n") {
+		trim := strings.TrimLeft(line, " \t")
+		indent := len(line) - len(trim)
+		if !strings.HasPrefix(trim, "[") {
+			continue
+		}
+		closeLabel := strings.Index(trim, "]:")
+		if closeLabel <= 1 {
+			continue
+		}
+		label := strings.TrimSpace(trim[1:closeLabel])
+		raw := strings.TrimSpace(trim[closeLabel+2:])
+		raw = strings.Trim(raw, "<>")
+		if label == "" || raw == "" || strings.Contains(raw, "://") || strings.HasPrefix(raw, "mailto:") {
+			continue
+		}
+		defs[normName(label)] = referenceDefinition{
+			Label:  label,
+			Range:  textRange{Start: position{Line: lineNo, Character: utf16Len(line[:indent])}, End: position{Line: lineNo, Character: utf16Len(line)}},
+			Target: parseLinkTarget(raw),
+		}
+	}
+	return defs
+}
+
+func referenceLinks(text string, defs map[string]referenceDefinition) []markdownLink {
+	var links []markdownLink
+	for lineNo, line := range strings.Split(text, "\n") {
+		start := 0
+		for {
+			openText := strings.Index(line[start:], "[")
+			if openText < 0 {
+				break
+			}
+			openText += start
+			if openText+1 < len(line) && line[openText+1] == '[' {
+				start = openText + 2
+				continue
+			}
+			closeText := strings.Index(line[openText+1:], "][")
+			if closeText < 0 {
+				break
+			}
+			closeText += openText + 1
+			openLabel := closeText + 2
+			closeLabel := strings.Index(line[openLabel:], "]")
+			if closeLabel < 0 {
+				break
+			}
+			closeLabel += openLabel
+			label := strings.TrimSpace(line[openLabel:closeLabel])
+			if label == "" {
+				label = strings.TrimSpace(line[openText+1 : closeText])
+			}
+			if def, ok := defs[normName(label)]; ok {
+				links = append(links, markdownLink{
+					Range:  textRange{Start: position{Line: lineNo, Character: utf16Len(line[:openText])}, End: position{Line: lineNo, Character: utf16Len(line[:closeLabel+1])}},
+					Target: def.Target,
+				})
+			}
+			start = closeLabel + 1
 		}
 	}
 	return links

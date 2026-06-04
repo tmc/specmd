@@ -299,6 +299,27 @@ func (s *Server) indexCompletions(uri, text string, pos position) []completionIt
 			}
 		}
 	}
+	if strings.Contains(prefix, "#") {
+		for _, sym := range s.indexedSymbols() {
+			if sym.Family == "tag" {
+				items = append(items, completionItem{Label: sym.Name, Kind: completionKindText, Detail: "Markdown tag", InsertText: sym.Name})
+			}
+		}
+	}
+	if strings.Contains(prefix, "status:") || strings.Contains(prefix, "|") {
+		for _, status := range []string{"current", "planned", "deprecated", "removed"} {
+			items = append(items, completionItem{Label: status, Kind: completionKindText, Detail: "OpenSpec status", InsertText: status})
+		}
+	}
+	if strings.Contains(prefix, "domain:") || strings.Contains(line, "|") {
+		seen := make(map[string]bool)
+		for _, sym := range s.indexedSymbols() {
+			if sym.Domain != "" && !seen[sym.Domain] {
+				seen[sym.Domain] = true
+				items = append(items, completionItem{Label: sym.Domain, Kind: completionKindText, Detail: "OOUX domain", InsertText: sym.Domain})
+			}
+		}
+	}
 	return items
 }
 
@@ -502,15 +523,47 @@ func hoverAt(uri, text string, pos position) string {
 }
 
 func (s *Server) hoverAt(uri, text string, pos position) string {
+	if link, ok := linkAt(text, pos); ok {
+		if loc, ok := s.resolveLink(uri, link.Target); ok {
+			title := path.Base(loc.URI)
+			if h, ok := titleHeading(s.text(loc.URI)); ok {
+				title = h.Text
+			}
+			return "Link target: " + title + "\n\nSource: " + path.Base(loc.URI)
+		}
+	}
 	if name, ok := plainNameAt(text, pos); ok {
 		if sym, ok := s.objectSymbol(name); ok {
 			if row, ok := s.objectRow(sym.Canon); ok && row.Detail != "" {
-				return row.Canon + "\n\n" + row.Detail + "\n\nSource: " + path.Base(row.URI)
+				extra := ""
+				if row.Status != "" || row.Domain != "" {
+					extra = "\n\nStatus: " + row.Status + "\nDomain: " + row.Domain
+				}
+				return row.Canon + "\n\n" + row.Detail + extra + "\n\nSource: " + path.Base(row.URI)
 			}
 			return sym.Canon + "\n\nSource: " + path.Base(sym.URI)
 		}
 	}
+	if meta := s.indexMeta(uri); len(meta) > 0 && pos.Line < 6 {
+		var parts []string
+		for _, key := range []string{"title", "status", "owner", "domain", "last_reviewed"} {
+			if v := meta[key]; v != "" {
+				parts = append(parts, key+": "+v)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, "\n")
+		}
+	}
 	return hoverAt(uri, text, pos)
+}
+
+func (s *Server) indexMeta(uri string) map[string]string {
+	_ = s.ensureIndex()
+	if doc, ok := s.index.docs[uri]; ok {
+		return doc.Meta
+	}
+	return nil
 }
 
 func (s *Server) objectSymbol(name string) (indexedSymbol, bool) {

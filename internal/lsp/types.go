@@ -94,6 +94,15 @@ type didCloseParams struct {
 	TextDocument textDocumentIdentifier `json:"textDocument"`
 }
 
+type didChangeWatchedFilesParams struct {
+	Changes []fileEvent `json:"changes"`
+}
+
+type fileEvent struct {
+	URI  string `json:"uri"`
+	Type int    `json:"type"`
+}
+
 type publishDiagnosticsParams struct {
 	URI         string       `json:"uri"`
 	Diagnostics []diagnostic `json:"diagnostics"`
@@ -128,8 +137,40 @@ type codeActionContext struct {
 	Diagnostics []diagnostic `json:"diagnostics,omitempty"`
 }
 
+type renameParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+	Position     position               `json:"position"`
+	NewName      string                 `json:"newName"`
+}
+
 type workspaceSymbolParams struct {
 	Query string `json:"query,omitempty"`
+}
+
+type codeLensParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+}
+
+type codeLens struct {
+	Range   textRange `json:"range"`
+	Command command   `json:"command"`
+}
+
+type command struct {
+	Title     string `json:"title"`
+	Command   string `json:"command"`
+	Arguments []any  `json:"arguments,omitempty"`
+}
+
+type inlayHintParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+	Range        textRange              `json:"range"`
+}
+
+type inlayHint struct {
+	Position position `json:"position"`
+	Label    string   `json:"label"`
+	Kind     int      `json:"kind,omitempty"`
 }
 
 type selectionRangeParams struct {

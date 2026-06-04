@@ -87,6 +87,14 @@ func (s *Server) documentLinks(uri string) []documentLink {
 		}
 		links = append(links, documentLink{Range: link.Range, Target: docURI})
 	}
+	defs := referenceDefinitions(text)
+	for _, link := range referenceLinks(text, defs) {
+		docURI := ""
+		if loc, ok := s.resolveLink(uri, link.Target); ok {
+			docURI = loc.URI
+		}
+		links = append(links, documentLink{Range: link.Range, Target: docURI})
+	}
 	links = append(links, pathLinks(text)...)
 	return links
 }

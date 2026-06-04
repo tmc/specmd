@@ -112,6 +112,37 @@ func TestWorkspaceIndexCompletionAndHover(t *testing.T) {
 	}
 }
 
+func TestOOUXIntegrityDiagnostics(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "00-object-catalog.md", strings.Join([]string{
+		"# Catalog",
+		"",
+		"| Object | One-line definition | Domain | Status |",
+		"|---|---|---|---|",
+		"| **Variant** | Alternate generated thread. | variants | current |",
+	}, "\n"))
+	writeFile(t, root, "objects/t6.md", "# T6\n\n## Variant   `status: planned`\n")
+	writeFile(t, root, "matrices/relationship-map.md", "| Missing Object | Variant |\n")
+	writeFile(t, root, "matrices/cta-matrix.md", "| Other Variant | generate |\n")
+
+	s := NewServer(nil, nil)
+	s.setRoot(initializeParams{RootURI: uriFromPath(root)})
+	catalog := uriFromPath(filepath.Join(root, "00-object-catalog.md"))
+	rel := uriFromPath(filepath.Join(root, "matrices/relationship-map.md"))
+
+	for _, msg := range []string{
+		"object status differs from catalog row",
+		"current ooux object has no cta row",
+	} {
+		if !hasDiagnostic(s.graphDiagnostics(catalog), msg) {
+			t.Fatalf("catalog diagnostics missing %q: %+v", msg, s.graphDiagnostics(catalog))
+		}
+	}
+	if !hasDiagnostic(s.graphDiagnostics(rel), "referenced ooux object is missing from catalog") {
+		t.Fatalf("relationship diagnostics missing unknown object warning: %+v", s.graphDiagnostics(rel))
+	}
+}
+
 func writeFile(t *testing.T, root, name, text string) {
 	t.Helper()
 	p := filepath.Join(root, filepath.FromSlash(name))
