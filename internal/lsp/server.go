@@ -55,10 +55,15 @@ func (s *Server) handle(req request) error {
 	case "initialize":
 		return s.respond(req.ID, map[string]any{
 			"capabilities": map[string]any{
-				"textDocumentSync":       map[string]any{"openClose": true, "change": 1},
-				"documentSymbolProvider": true,
-				"definitionProvider":     true,
-				"referencesProvider":     true,
+				"textDocumentSync":        map[string]any{"openClose": true, "change": 1},
+				"documentSymbolProvider":  true,
+				"definitionProvider":      true,
+				"referencesProvider":      true,
+				"codeActionProvider":      true,
+				"documentLinkProvider":    map[string]any{},
+				"workspaceSymbolProvider": true,
+				"foldingRangeProvider":    true,
+				"selectionRangeProvider":  true,
 				"completionProvider": map[string]any{
 					"triggerCharacters": []string{"#", "-", ":"},
 				},
@@ -121,6 +126,36 @@ func (s *Server) handle(req request) error {
 			return s.respond(req.ID, []location{})
 		}
 		return s.respond(req.ID, s.references(p.TextDocument.URI, p.Position))
+	case "textDocument/codeAction":
+		var p codeActionParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []codeAction{})
+		}
+		return s.respond(req.ID, codeActions(p.TextDocument.URI, s.docs[p.TextDocument.URI], p.Context.Diagnostics))
+	case "textDocument/documentLink":
+		var p textDocumentParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []documentLink{})
+		}
+		return s.respond(req.ID, s.documentLinks(p.TextDocument.URI))
+	case "workspace/symbol":
+		var p workspaceSymbolParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []workspaceSymbol{})
+		}
+		return s.respond(req.ID, s.workspaceSymbols(p.Query))
+	case "textDocument/foldingRange":
+		var p textDocumentParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []foldingRange{})
+		}
+		return s.respond(req.ID, foldingRanges(s.docs[p.TextDocument.URI]))
+	case "textDocument/selectionRange":
+		var p selectionRangeParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return s.respond(req.ID, []selectionRange{})
+		}
+		return s.respond(req.ID, selectionRanges(s.docs[p.TextDocument.URI], p.Positions))
 	default:
 		if len(req.ID) == 0 {
 			return nil

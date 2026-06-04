@@ -107,6 +107,25 @@ type referenceContext struct {
 	IncludeDeclaration bool `json:"includeDeclaration,omitempty"`
 }
 
+type codeActionParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+	Range        textRange              `json:"range"`
+	Context      codeActionContext      `json:"context,omitempty"`
+}
+
+type codeActionContext struct {
+	Diagnostics []diagnostic `json:"diagnostics,omitempty"`
+}
+
+type workspaceSymbolParams struct {
+	Query string `json:"query,omitempty"`
+}
+
+type selectionRangeParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+	Positions    []position             `json:"positions"`
+}
+
 type completionList struct {
 	IsIncomplete bool             `json:"isIncomplete"`
 	Items        []completionItem `json:"items"`
@@ -136,4 +155,44 @@ type documentSymbol struct {
 	Range          textRange        `json:"range"`
 	SelectionRange textRange        `json:"selectionRange"`
 	Children       []documentSymbol `json:"children,omitempty"`
+}
+
+type workspaceSymbol struct {
+	Name     string   `json:"name"`
+	Kind     int      `json:"kind"`
+	Location location `json:"location"`
+}
+
+type codeAction struct {
+	Title       string        `json:"title"`
+	Kind        string        `json:"kind,omitempty"`
+	Diagnostics []diagnostic  `json:"diagnostics,omitempty"`
+	Edit        workspaceEdit `json:"edit,omitempty"`
+}
+
+type workspaceEdit struct {
+	Changes map[string][]textEdit `json:"changes,omitempty"`
+}
+
+type textEdit struct {
+	Range   textRange `json:"range"`
+	NewText string    `json:"newText"`
+}
+
+type documentLink struct {
+	Range  textRange `json:"range"`
+	Target string    `json:"target,omitempty"`
+}
+
+type foldingRange struct {
+	StartLine      int    `json:"startLine"`
+	StartCharacter int    `json:"startCharacter,omitempty"`
+	EndLine        int    `json:"endLine"`
+	EndCharacter   int    `json:"endCharacter,omitempty"`
+	Kind           string `json:"kind,omitempty"`
+}
+
+type selectionRange struct {
+	Range  textRange       `json:"range"`
+	Parent *selectionRange `json:"parent,omitempty"`
 }

@@ -156,6 +156,63 @@ func TestSymbolsUseUTF16Ranges(t *testing.T) {
 	}
 }
 
+func TestCodeActions(t *testing.T) {
+	uri := "file:///repo/openspec/specs/auth/spec.md"
+	text := "# Auth\n\n## Purpose\n\n## Requiement\n"
+	actions := codeActions(uri, text, analyze(uri, text))
+	for _, label := range []string{"Insert ## Requirements", "Fix heading to ## Requirements", "Insert requirement scenario skeleton"} {
+		if !hasCodeAction(actions, label) {
+			t.Fatalf("missing %q action: %+v", label, actions)
+		}
+	}
+}
+
+func TestDocumentPathLinks(t *testing.T) {
+	links := pathLinks("See openspec/specs/auth/spec.md for details.\n")
+	if len(links) != 1 {
+		t.Fatalf("len(pathLinks) = %d, want 1", len(links))
+	}
+	if got, want := links[0].Target, "openspec/specs/auth/spec.md"; got != want {
+		t.Fatalf("Target = %q, want %q", got, want)
+	}
+}
+
+func TestWorkspaceSymbols(t *testing.T) {
+	s := NewServer(strings.NewReader(""), nil)
+	s.docs["file:///repo/openspec/specs/auth/spec.md"] = "# Auth\n\n## Requirements\n\n### Requirement: Login\n"
+	s.docs["file:///repo/openspec/extensions/ooux/model.md"] = "# OOUX model\n\n## Objects\n"
+	syms := s.workspaceSymbols("login")
+	if len(syms) != 1 {
+		t.Fatalf("len(workspaceSymbols) = %d, want 1: %+v", len(syms), syms)
+	}
+	if got, want := syms[0].Name, "Requirement: Login"; got != want {
+		t.Fatalf("Name = %q, want %q", got, want)
+	}
+}
+
+func TestFoldingRanges(t *testing.T) {
+	ranges := foldingRanges("# Auth\n\n## Requirements\n\n### Requirement: Login\n\ntext\n")
+	if len(ranges) < 2 {
+		t.Fatalf("len(foldingRanges) = %d, want at least 2: %+v", len(ranges), ranges)
+	}
+	if got, want := ranges[0].StartLine, 0; got != want {
+		t.Fatalf("StartLine = %d, want %d", got, want)
+	}
+}
+
+func TestSelectionRanges(t *testing.T) {
+	ranges := selectionRanges("# Auth\n\n## Requirements\n\ntext\n", []position{{Line: 3, Character: 0}})
+	if len(ranges) != 1 {
+		t.Fatalf("len(selectionRanges) = %d, want 1", len(ranges))
+	}
+	if got, want := ranges[0].Range.Start.Line, 2; got != want {
+		t.Fatalf("Range.Start.Line = %d, want %d", got, want)
+	}
+	if ranges[0].Parent == nil {
+		t.Fatal("Parent is nil, want document range")
+	}
+}
+
 func hasCompletion(items []completionItem, label string) bool {
 	_, ok := completionByLabel(items, label)
 	return ok
@@ -173,6 +230,15 @@ func completionByLabel(items []completionItem, label string) (completionItem, bo
 func hasDiagnostic(diags []diagnostic, msg string) bool {
 	for _, diag := range diags {
 		if diag.Message == msg {
+			return true
+		}
+	}
+	return false
+}
+
+func hasCodeAction(actions []codeAction, title string) bool {
+	for _, action := range actions {
+		if action.Title == title {
 			return true
 		}
 	}

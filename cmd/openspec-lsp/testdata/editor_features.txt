@@ -1,0 +1,24 @@
+lsp session.jsonl
+stdout '"codeActionProvider":true'
+stdout '"documentLinkProvider":{}'
+stdout '"workspaceSymbolProvider":true'
+stdout '"foldingRangeProvider":true'
+stdout '"selectionRangeProvider":true'
+stdout '"title":"Insert ## Requirements"'
+stdout '"title":"Fix heading to ## Requirements"'
+stdout '"target":"file:///repo/openspec/extensions/contexts/map.md"'
+stdout '"name":"Requirement: Login"'
+stdout '"kind":"region"'
+stdout '"parent"'
+
+-- session.jsonl --
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/specs/auth/spec.md","languageId":"markdown","version":1,"text":"# Auth\n\n## Purpose\n\n## Requiement\n\n### Requirement: Login\n\nSee [[Context map]].\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///repo/openspec/extensions/contexts/map.md","languageId":"markdown","version":1,"text":"# Context map\n\n## Contexts\n\n## Relationships\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/codeAction","params":{"textDocument":{"uri":"file:///repo/openspec/specs/auth/spec.md"},"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":0}},"context":{"diagnostics":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}},"severity":1,"source":"openspec","message":"missing ## Requirements section"}]}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/documentLink","params":{"textDocument":{"uri":"file:///repo/openspec/specs/auth/spec.md"}}}
+{"jsonrpc":"2.0","id":4,"method":"workspace/symbol","params":{"query":"Login"}}
+{"jsonrpc":"2.0","id":5,"method":"textDocument/foldingRange","params":{"textDocument":{"uri":"file:///repo/openspec/specs/auth/spec.md"}}}
+{"jsonrpc":"2.0","id":6,"method":"textDocument/selectionRange","params":{"textDocument":{"uri":"file:///repo/openspec/specs/auth/spec.md"},"positions":[{"line":7,"character":0}]}}
+{"jsonrpc":"2.0","id":7,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}
