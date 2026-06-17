@@ -1,8 +1,9 @@
 # Extension Design
 
 Package `openspec` keeps the core OpenSpec artifact model small: specs,
-changes, deltas, requirements, scenarios, and validation reports. Extensions
-should add typed artifact models around that core, not arbitrary fields inside
+changes, deltas, requirements, and scenarios, with validation findings
+reported through the shared `specmd/validation` package. Extensions should add
+typed artifact models around that core, not arbitrary fields inside
 requirements.
 
 Upstream OpenSpec extends workflows through project configuration and custom

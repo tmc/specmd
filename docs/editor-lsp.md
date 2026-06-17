@@ -1,20 +1,20 @@
-# OpenSpec LSP Editor Setup
+# specmd LSP Editor Setup
 
-`openspec-lsp` is a small stdio Language Server Protocol server for OpenSpec
-Markdown files. It does not manage workspaces or install editor plugins.
+`specmd-lsp` is a small stdio Language Server Protocol server for OpenSpec and
+OKF Markdown files. It does not manage workspaces or install editor plugins.
 
 ## Run
 
 From this repository:
 
 ```sh
-go run ./cmd/openspec-lsp
+go run ./cmd/specmd-lsp
 ```
 
 For day-to-day editor use:
 
 ```sh
-go install ./cmd/openspec-lsp
+go install ./cmd/specmd-lsp
 ```
 
 The server reads open Markdown documents from the editor. Paths are used to
@@ -38,8 +38,8 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function(args)
     local root = vim.fs.root(args.buf, { "openspec", ".git" }) or vim.fn.getcwd()
     vim.lsp.start({
-      name = "openspec-lsp",
-      cmd = { "openspec-lsp" },
+      name = "specmd-lsp",
+      cmd = { "specmd-lsp" },
       root_dir = root,
     })
   end,
@@ -49,18 +49,18 @@ vim.api.nvim_create_autocmd("FileType", {
 To run from a checkout without installing:
 
 ```lua
-cmd = { "go", "run", "./cmd/openspec-lsp" }
+cmd = { "go", "run", "./cmd/specmd-lsp" }
 ```
 
 Use the installed form when opening `docs/editor-demo`, because `go run
-./cmd/openspec-lsp` expects the repository root as the current directory.
+./cmd/specmd-lsp` expects the repository root as the current directory.
 
-A reusable setup file is available at `editors/nvim/lua/openspec_lsp.lua`.
+A reusable setup file is available at `editor-support/nvim/lua/specmd_lsp.lua`.
 It attaches only to Markdown buffers whose path or root contains `openspec`.
 For a quick local smoke test:
 
 ```lua
-dofile("/path/to/openspec/editors/nvim/openspec-lsp.lua")
+dofile("/path/to/specmd/editor-support/nvim/specmd-lsp.lua")
 ```
 
 Useful checks:
@@ -76,15 +76,15 @@ Useful checks:
 ## VS Code
 
 VS Code needs a small extension wrapper to launch arbitrary stdio LSP servers.
-This repository includes a thin wrapper at `editors/vscode`. It starts the
-existing `openspec-lsp` binary and leaves parsing, diagnostics, completion, and
+This repository includes a thin wrapper at `editor-support/vscode`. It starts the
+existing `specmd-lsp` binary and leaves parsing, diagnostics, completion, and
 navigation in the Go server.
 
 The wrapper exposes:
 
-- `openspec.lsp.path`: path to `openspec-lsp`, defaulting to `openspec-lsp` on
+- `specmd.lsp.path`: path to `specmd-lsp`, defaulting to `specmd-lsp` on
   `PATH`;
-- `openspec.lsp.trace.server`: `off`, `messages`, or `verbose`;
+- `specmd.lsp.trace.server`: `off`, `messages`, or `verbose`;
 - `OpenSpec: Validate Project`;
 - `OpenSpec: Insert Requirement`;
 - `OpenSpec: Open Extension Model`.
@@ -92,7 +92,7 @@ The wrapper exposes:
 To test locally:
 
 ```sh
-cd editors/vscode
+cd editor-support/vscode
 npm install
 npm run compile
 ```
@@ -102,7 +102,7 @@ this server shape:
 
 ```json
 {
-  "command": "openspec-lsp",
+  "command": "specmd-lsp",
   "args": [],
   "transport": "stdio",
   "documentSelector": [{ "language": "markdown", "scheme": "file" }]
@@ -116,19 +116,19 @@ in TypeScript.
 
 Zed requires a language extension to attach a custom language server to
 Markdown. This repository includes a local dev extension at
-`zed/openspec-lsp`.
+`editor-support/zed`.
 
 Install the server binary:
 
 ```sh
-go install ./cmd/openspec-lsp
+go install ./cmd/specmd-lsp
 ```
 
 Then install the dev extension in Zed:
 
 1. Open the command palette.
 2. Run `zed: install dev extension`.
-3. Select `zed/openspec-lsp`.
+3. Select `editor-support/zed`.
 4. Restart the OpenSpec LSP if Zed asks, or reopen the Markdown file.
 
 Zed compiles Rust extensions to WebAssembly. If installation reports a missing
@@ -144,22 +144,22 @@ The project-local `.zed/settings.json` enables the server for Markdown:
 {
   "languages": {
     "Markdown": {
-      "language_servers": ["openspec-lsp", "..."]
+      "language_servers": ["specmd-lsp", "..."]
     }
   }
 }
 ```
 
-The extension first honors `lsp.openspec-lsp.binary.path`, then falls back to
-`openspec-lsp` on `PATH`. If Zed cannot find the server, add a project-local
+The extension first honors `lsp.specmd-lsp.binary.path`, then falls back to
+`specmd-lsp` on `PATH`. If Zed cannot find the server, add a project-local
 override:
 
 ```json
 {
   "lsp": {
-    "openspec-lsp": {
+    "specmd-lsp": {
       "binary": {
-        "path": "/absolute/path/to/openspec-lsp"
+        "path": "/absolute/path/to/specmd-lsp"
       }
     }
   }
@@ -168,18 +168,19 @@ override:
 
 Project-local tasks live in `.zed/tasks.json`:
 
-- `openspec: validate current file`
-- `openspec: validate project`
-- `openspec: test lsp`
-- `openspec: test all`
+- `specmd: validate current file`
+- `specmd: validate project`
+- `specmd: test lsp`
+- `specmd: test all`
 
-The current repository does not have a separate OpenSpec validation CLI, so the
-validation tasks run the Go test suite as the project-level verification gate.
+These tasks run the Go test suite as the project-level verification gate
+rather than shelling out to `specmd validate`, so they exercise the parser,
+validator, and LSP together.
 
 ## Demo
 
 Open `docs/editor-demo` as the editor workspace after installing
-`openspec-lsp`.
+`specmd-lsp`.
 
 Files to try:
 
@@ -218,19 +219,19 @@ Useful editor checks:
 ## Troubleshooting
 
 - If no LSP starts, check that the filetype is `markdown`.
-- If `openspec-lsp` is not found, run `go install ./cmd/openspec-lsp` and make
+- If `specmd-lsp` is not found, run `go install ./cmd/specmd-lsp` and make
   sure `$GOBIN` or `$GOPATH/bin` is on `PATH`.
-- If `go run ./cmd/openspec-lsp` fails, run it from the repository root.
+- If `go run ./cmd/specmd-lsp` fails, run it from the repository root.
 - If diagnostics do not appear, check that the file path contains an
   `openspec/specs`, `openspec/changes`, or `openspec/extensions` segment.
 - Stdio servers do not print logs to the terminal used by the editor; use the
   editor's LSP log when debugging startup.
-- In Zed, use `zed: install dev extension` with `zed/openspec-lsp`. If Zed
+- In Zed, use `zed: install dev extension` with `editor-support/zed`. If Zed
   cannot compile the extension but shell `cargo build --target wasm32-wasip2`
   succeeds, install from a clean shell or use a locally built dev extension
   copy for a manual smoke test. Do not commit generated `.wasm` files.
 - Zed smoke evidence for this branch was captured outside the repo at
-  `/tmp/openspec-zed-lsp.png`.
+  `/tmp/specmd-zed-lsp.png`.
 
 ## Feature Coverage
 
@@ -316,7 +317,7 @@ Current behavior:
 
 ## Workspace Index
 
-`openspec-lsp` builds a small internal index of Markdown files under the LSP
+`specmd-lsp` builds a small internal index of Markdown files under the LSP
 root supplied during `initialize`. It skips `.git`, `node_modules`, build
 outputs, generated editor outputs, binary files, invalid UTF-8, and files over
 1 MiB. The index stores only text-derived facts:
@@ -356,7 +357,7 @@ projects:
   heading definitions, references, completions, and structural diagnostics:
   <https://github.com/artempyanykh/marksman>.
 - IWE treats a Markdown folder as a graph across editors including VS Code,
-  Neovim, Zed, and Helix; `openspec-lsp` keeps the graph internal and avoids
+  Neovim, Zed, and Helix; `specmd-lsp` keeps the graph internal and avoids
   query languages, graph UI, MCP, or rewrite tooling:
   <https://iwe.md/docs/concepts/comparison/>.
 - Foam's link-reference behavior reinforces standard Markdown portability; the
