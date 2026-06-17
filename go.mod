@@ -1,4 +1,4 @@
-module github.com/tmc/openspec
+module github.com/tmc/specmd
 
 go 1.23
 

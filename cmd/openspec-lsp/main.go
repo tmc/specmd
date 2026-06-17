@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/tmc/openspec/internal/lsp"
+	"github.com/tmc/specmd/internal/lsp"
 )
 
 func main() {

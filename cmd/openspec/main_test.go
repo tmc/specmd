@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/tmc/openspec"
 )
 
 func TestRunHelp(t *testing.T) {
@@ -22,7 +20,7 @@ func TestRunHelp(t *testing.T) {
 }
 
 func TestValidateSpecWarningsDoNotFail(t *testing.T) {
-	path := filepath.Join("..", "..", "testdata", "specs", "auth", "spec.md")
+	path := filepath.Join("..", "..", "openspec", "testdata", "specs", "auth", "spec.md")
 	var out, err bytes.Buffer
 	if e := run([]string{"validate", path}, &out, &err); e != nil {
 		t.Fatal(e)
@@ -63,7 +61,7 @@ func TestLSPRejectsArgs(t *testing.T) {
 }
 
 func TestValidateJSON(t *testing.T) {
-	path := filepath.Join("..", "..", "testdata", "project", "openspec")
+	path := filepath.Join("..", "..", "openspec", "testdata", "project", "openspec")
 	var out, err bytes.Buffer
 	if e := run([]string{"validate", "-json", path}, &out, &err); e != nil {
 		t.Fatal(e)
@@ -81,7 +79,7 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestValidateOKFBundle(t *testing.T) {
-	path := filepath.Join("..", "..", "testdata", "okf")
+	path := filepath.Join("..", "..", "okf", "testdata", "okf")
 	var out, err bytes.Buffer
 	if e := run([]string{"validate", path}, &out, &err); e != nil {
 		t.Fatal(e)
@@ -92,7 +90,7 @@ func TestValidateOKFBundle(t *testing.T) {
 }
 
 func TestValidateOKFConceptJSON(t *testing.T) {
-	path := filepath.Join("..", "..", "testdata", "okf", "tables", "orders.md")
+	path := filepath.Join("..", "..", "okf", "testdata", "okf", "tables", "orders.md")
 	var out, err bytes.Buffer
 	if e := run([]string{"validate", "-json", path}, &out, &err); e != nil {
 		t.Fatal(e)
@@ -140,20 +138,6 @@ func TestValidateOKFConceptCRLF(t *testing.T) {
 	}
 	if result.Kind != "okf-concept" {
 		t.Fatalf("Kind = %q, want okf-concept", result.Kind)
-	}
-}
-
-func TestValidationReportSummary(t *testing.T) {
-	report := validationReport([]openspec.ValidationIssue{
-		{Level: openspec.ValidationLevelError},
-		{Level: openspec.ValidationLevelWarning},
-		{Level: openspec.ValidationLevelInfo},
-	})
-	if report.Valid {
-		t.Fatal("Valid = true, want false")
-	}
-	if report.Summary.Errors != 1 || report.Summary.Warnings != 1 || report.Summary.Info != 1 {
-		t.Fatalf("Summary = %+v", report.Summary)
 	}
 }
 

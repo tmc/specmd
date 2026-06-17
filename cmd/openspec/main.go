@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tmc/openspec"
-	"github.com/tmc/openspec/internal/lsp"
+	"github.com/tmc/specmd/internal/lsp"
+	"github.com/tmc/specmd/okf"
+	"github.com/tmc/specmd/openspec"
+	"github.com/tmc/specmd/validation"
 )
 
 func main() {
@@ -107,7 +109,7 @@ type validationResult struct {
 	Valid   bool              `json:"valid"`
 	Issues  []validationIssue `json:"issues,omitempty"`
 	Summary validationSummary `json:"summary"`
-	report  openspec.ValidationReport
+	report  validation.Report
 }
 
 type validationIssue struct {
@@ -162,16 +164,16 @@ func validateProject(path string) (validationResult, error) {
 	if err != nil {
 		return validationResult{}, fmt.Errorf("validate: %w", err)
 	}
-	var issues []openspec.ValidationIssue
+	var issues []validation.Issue
 	for i := range project.Specs {
 		report := openspec.ValidateSpecReport(&project.Specs[i])
-		issues = append(issues, prefixIssues("specs."+project.Specs[i].Name, report.Issues)...)
+		issues = append(issues, validation.Prefix("specs."+project.Specs[i].Name, report.Issues)...)
 	}
 	for i := range project.Changes {
 		report := openspec.ValidateChangeReport(&project.Changes[i])
-		issues = append(issues, prefixIssues("changes."+project.Changes[i].Name, report.Issues)...)
+		issues = append(issues, validation.Prefix("changes."+project.Changes[i].Name, report.Issues)...)
 	}
-	return result(path, "project", validationReport(issues)), nil
+	return result(path, "project", validation.New(issues)), nil
 }
 
 func validateChangeDir(path string) (validationResult, error) {
@@ -184,24 +186,24 @@ func validateChangeDir(path string) (validationResult, error) {
 }
 
 func validateOKFBundle(path string) (validationResult, error) {
-	bundle, err := openspec.ParseOKFBundle(path)
+	bundle, err := okf.ParseBundle(path)
 	if err != nil {
 		return validationResult{}, fmt.Errorf("validate: %w", err)
 	}
-	report := openspec.ValidateOKFBundleReport(bundle)
+	report := okf.ValidateBundleReport(bundle)
 	return result(path, "okf-bundle", report), nil
 }
 
 func validateOKFConceptFile(path string) (validationResult, error) {
-	concept, err := openspec.ParseOKFConceptFile(path)
+	concept, err := okf.ParseConceptFile(path)
 	if err != nil {
 		return validationResult{}, fmt.Errorf("validate: %w", err)
 	}
-	report := openspec.ValidateOKFConceptReport(concept)
+	report := okf.ValidateConceptReport(concept)
 	return result(path, "okf-concept", report), nil
 }
 
-func result(path, kind string, report openspec.ValidationReport) validationResult {
+func result(path, kind string, report validation.Report) validationResult {
 	return validationResult{
 		Path:    path,
 		Kind:    kind,
@@ -212,7 +214,7 @@ func result(path, kind string, report openspec.ValidationReport) validationResul
 	}
 }
 
-func jsonIssues(issues []openspec.ValidationIssue) []validationIssue {
+func jsonIssues(issues []validation.Issue) []validationIssue {
 	out := make([]validationIssue, len(issues))
 	for i, issue := range issues {
 		out[i] = validationIssue{
@@ -224,36 +226,8 @@ func jsonIssues(issues []openspec.ValidationIssue) []validationIssue {
 	return out
 }
 
-func jsonSummary(summary openspec.ValidationSummary) validationSummary {
+func jsonSummary(summary validation.Summary) validationSummary {
 	return validationSummary{Errors: summary.Errors, Warnings: summary.Warnings, Info: summary.Info}
-}
-
-func validationReport(issues []openspec.ValidationIssue) openspec.ValidationReport {
-	var summary openspec.ValidationSummary
-	for _, issue := range issues {
-		switch issue.Level {
-		case openspec.ValidationLevelError:
-			summary.Errors++
-		case openspec.ValidationLevelWarning:
-			summary.Warnings++
-		case openspec.ValidationLevelInfo:
-			summary.Info++
-		}
-	}
-	return openspec.ValidationReport{Valid: summary.Errors == 0, Issues: issues, Summary: summary}
-}
-
-func prefixIssues(prefix string, issues []openspec.ValidationIssue) []openspec.ValidationIssue {
-	out := make([]openspec.ValidationIssue, len(issues))
-	for i, issue := range issues {
-		out[i] = issue
-		if issue.Path == "" {
-			out[i].Path = prefix
-		} else {
-			out[i].Path = prefix + "." + issue.Path
-		}
-	}
-	return out
 }
 
 func printValidation(w io.Writer, result validationResult) {

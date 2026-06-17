@@ -1,19 +1,21 @@
-// Package openspec parses and validates OpenSpec Markdown artifacts.
+// Package specmd is an umbrella for structured-Markdown authoring, validation,
+// and language-server tooling.
 //
-// Specs use a Purpose section and Requirements section. Each requirement is
-// introduced by a level-three "Requirement:" heading and has one or more
-// level-four "Scenario:" headings.
+// The module groups several Markdown families that share one parse-and-validate
+// shape:
 //
-// Changes use Why and What Changes sections plus delta specs. Delta specs group
-// requirements under "ADDED", "MODIFIED", "REMOVED", or "RENAMED" requirement
-// headings.
+//   - [github.com/tmc/specmd/openspec] parses and validates OpenSpec specs and
+//     changes.
+//   - [github.com/tmc/specmd/okf] parses and validates Open Knowledge Format
+//     bundles.
+//   - [github.com/tmc/specmd/validation] defines the shared validation
+//     vocabulary that both report findings in.
 //
-// Project parsing also discovers extension Markdown artifacts under
-// extensions/ and changes/<name>/extensions/. Extensions are returned as
-// ExtensionRef values; the package does not parse extension payloads.
+// The cmd/specmd command validates these artifacts; cmd/specmd-lsp serves them
+// to editors over the Language Server Protocol.
 //
-// OKF support parses Open Knowledge Format v0.1 bundles as Markdown concept
-// files with YAML frontmatter. Validation enforces the hard conformance rules
-// while treating optional fields, unknown types, unknown keys, and broken links
-// permissively.
-package openspec
+// This package re-exports the [github.com/tmc/specmd/validation] types as
+// aliases so callers can name a single validation vocabulary
+// (specmd.ValidationReport, specmd.ValidationIssue, and so on) regardless of
+// which family produced a report.
+package specmd

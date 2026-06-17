@@ -7,10 +7,11 @@ import (
 	"sort"
 	"strings"
 
-	openspec "github.com/tmc/openspec"
+	"github.com/tmc/specmd/openspec"
+	"github.com/tmc/specmd/validation"
 )
 
-const source = "openspec"
+const source = "specmd"
 
 const (
 	completionKindText    = 1
@@ -69,11 +70,11 @@ func hasSectionDiagnostics(diags []diagnostic) bool {
 	return false
 }
 
-func validationSeverity(level openspec.ValidationLevel) int {
+func validationSeverity(level validation.Level) int {
 	switch level {
-	case openspec.ValidationLevelError:
+	case validation.LevelError:
 		return 1
-	case openspec.ValidationLevelWarning:
+	case validation.LevelWarning:
 		return 2
 	default:
 		return 3

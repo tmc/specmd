@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	openspec "github.com/tmc/openspec"
+	"github.com/tmc/specmd/okf"
 )
 
 // okfConceptID derives a stable concept id from a document URI, mirroring the
@@ -20,8 +20,8 @@ func okfConceptID(uri string) string {
 // fence lines first because the library parser requires bare "---" fences while
 // editors commonly leave trailing whitespace on them; the LSP's lenient
 // front-matter detection accepts those, so the parser must too.
-func okfParse(uri, text string) (*openspec.OKFConcept, error) {
-	return openspec.ParseOKFConcept(okfConceptID(uri), strings.NewReader(canonicalFences(text)))
+func okfParse(uri, text string) (*okf.Concept, error) {
+	return okf.ParseConcept(okfConceptID(uri), strings.NewReader(canonicalFences(text)))
 }
 
 // canonicalFences trims trailing whitespace from leading "---" fence lines so a
@@ -87,7 +87,7 @@ func okfDiagnostics(uri, text string) []diagnostic {
 		}
 		return []diagnostic{diag(0, 0, 1, "OKF front matter: "+err.Error(), "okf-parse")}
 	}
-	report := openspec.ValidateOKFConceptReport(concept)
+	report := okf.ValidateConceptReport(concept)
 	var out []diagnostic
 	for _, issue := range report.Issues {
 		line, char := okfFieldLocation(text, issue.Path)

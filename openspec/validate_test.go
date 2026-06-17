@@ -3,6 +3,8 @@ package openspec
 import (
 	"strings"
 	"testing"
+
+	"github.com/tmc/specmd/validation"
 )
 
 func TestValidateSpec(t *testing.T) {
@@ -110,7 +112,7 @@ func TestValidateSpecReportBoundaries(t *testing.T) {
 		name     string
 		overview string
 		text     string
-		want     ValidationSummary
+		want     validation.Summary
 	}{
 		{
 			name:     "purpose exactly minimum",
@@ -121,7 +123,7 @@ func TestValidateSpecReportBoundaries(t *testing.T) {
 			name:     "purpose one short warns",
 			overview: strings.Repeat("a", minPurposeLength-1),
 			text:     "The system SHALL issue a token.",
-			want:     ValidationSummary{Warnings: 1},
+			want:     validation.Summary{Warnings: 1},
 		},
 		{
 			name:     "requirement text exactly maximum",
@@ -132,7 +134,7 @@ func TestValidateSpecReportBoundaries(t *testing.T) {
 			name:     "requirement text one long is info",
 			overview: strings.Repeat("a", minPurposeLength),
 			text:     requirementPrefix + strings.Repeat("x", maxRequirementTextLength-len(requirementPrefix)+1),
-			want:     ValidationSummary{Info: 1},
+			want:     validation.Summary{Info: 1},
 		},
 	}
 	for _, tt := range tests {
@@ -193,7 +195,7 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 		name string
 		why  string
 		edit func(*Change)
-		want ValidationSummary
+		want validation.Summary
 	}{
 		{
 			name: "why exactly minimum",
@@ -202,7 +204,7 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 		{
 			name: "why one short is error",
 			why:  strings.Repeat("w", minWhyLength-1),
-			want: ValidationSummary{Errors: 1},
+			want: validation.Summary{Errors: 1},
 		},
 		{
 			name: "why exactly maximum",
@@ -211,7 +213,7 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 		{
 			name: "why one long is error",
 			why:  strings.Repeat("w", maxWhyLength+1),
-			want: ValidationSummary{Errors: 1},
+			want: validation.Summary{Errors: 1},
 		},
 		{
 			name: "delta description one short warns",
@@ -219,7 +221,7 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 			edit: func(change *Change) {
 				change.Deltas[0].Description = strings.Repeat("d", minDeltaDescriptionLength-1)
 			},
-			want: ValidationSummary{Warnings: 1},
+			want: validation.Summary{Warnings: 1},
 		},
 		{
 			name: "missing added requirements warns",
@@ -231,7 +233,7 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 					Description: strings.Repeat("d", minDeltaDescriptionLength),
 				}
 			},
-			want: ValidationSummary{Warnings: 1},
+			want: validation.Summary{Warnings: 1},
 		},
 		{
 			name: "deltas exactly maximum",
@@ -246,7 +248,7 @@ func TestValidateChangeReportBoundaries(t *testing.T) {
 			edit: func(change *Change) {
 				change.Deltas = repeatDelta(validDelta, maxDeltasPerChange+1)
 			},
-			want: ValidationSummary{Errors: 1},
+			want: validation.Summary{Errors: 1},
 		},
 	}
 	for _, tt := range tests {

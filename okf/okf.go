@@ -1,4 +1,4 @@
-package openspec
+package okf
 
 import (
 	"fmt"
@@ -9,35 +9,35 @@ import (
 	"strings"
 )
 
-// ParseOKFConcept reads one Open Knowledge Format concept document.
-func ParseOKFConcept(id string, r io.Reader) (*OKFConcept, error) {
+// ParseConcept reads one Open Knowledge Format concept document.
+func ParseConcept(id string, r io.Reader) (*Concept, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("parse okf concept: empty id")
 	}
-	concept, err := parseOKFConcept(id, r, "")
+	concept, err := parseConcept(id, r, "")
 	if err != nil {
 		return nil, fmt.Errorf("parse okf concept: %w", err)
 	}
 	return concept, nil
 }
 
-// ParseOKFConceptFile reads one Open Knowledge Format concept file.
-func ParseOKFConceptFile(path string) (*OKFConcept, error) {
+// ParseConceptFile reads one Open Knowledge Format concept file.
+func ParseConceptFile(path string) (*Concept, error) {
 	id := strings.TrimSuffix(filepath.ToSlash(filepath.Clean(path)), ".md")
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("parse okf concept file: %w", err)
 	}
 	defer f.Close()
-	concept, err := parseOKFConcept(id, f, path)
+	concept, err := parseConcept(id, f, path)
 	if err != nil {
 		return nil, fmt.Errorf("parse okf concept file: %w", err)
 	}
 	return concept, nil
 }
 
-// ParseOKFBundle reads an Open Knowledge Format bundle directory.
-func ParseOKFBundle(path string) (*OKFBundle, error) {
+// ParseBundle reads an Open Knowledge Format bundle directory.
+func ParseBundle(path string) (*Bundle, error) {
 	var files []string
 	if err := filepath.WalkDir(path, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -59,7 +59,7 @@ func ParseOKFBundle(path string) (*OKFBundle, error) {
 	}
 	sort.Strings(files)
 
-	bundle := &OKFBundle{
+	bundle := &Bundle{
 		Root:     path,
 		Metadata: Metadata{Version: "0.1", Format: "okf", SourcePath: path},
 	}
@@ -71,7 +71,7 @@ func ParseOKFBundle(path string) (*OKFBundle, error) {
 		name := filepath.Base(file)
 		switch strings.ToLower(name) {
 		case "index.md", "log.md":
-			rf, err := parseOKFReservedFile(file, name)
+			rf, err := parseReservedFile(file, name)
 			if err != nil {
 				return nil, fmt.Errorf("parse okf bundle: %w", err)
 			}
@@ -90,14 +90,14 @@ func ParseOKFBundle(path string) (*OKFBundle, error) {
 			if err != nil {
 				return nil, fmt.Errorf("parse okf bundle: %w", err)
 			}
-			concept, err := parseOKFConcept(id, f, file)
+			concept, err := parseConcept(id, f, file)
 			if cerr := f.Close(); cerr != nil {
 				return nil, fmt.Errorf("parse okf bundle: %w", cerr)
 			}
 			if err != nil {
 				// A malformed concept is a conformance failure, not a
 				// reason to reject the whole bundle. Record and continue.
-				bundle.Invalid = append(bundle.Invalid, OKFInvalidConcept{ID: id, SourcePath: file, Err: err})
+				bundle.Invalid = append(bundle.Invalid, InvalidConcept{ID: id, SourcePath: file, Err: err})
 				continue
 			}
 			bundle.Concepts = append(bundle.Concepts, *concept)
@@ -106,7 +106,7 @@ func ParseOKFBundle(path string) (*OKFBundle, error) {
 	return bundle, nil
 }
 
-func parseOKFConcept(id string, r io.Reader, sourcePath string) (*OKFConcept, error) {
+func parseConcept(id string, r io.Reader, sourcePath string) (*Concept, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func parseOKFConcept(id string, r io.Reader, sourcePath string) (*OKFConcept, er
 	if err != nil {
 		return nil, err
 	}
-	c := &OKFConcept{
+	c := &Concept{
 		ID:          strings.TrimSpace(id),
 		FrontMatter: fields,
 		Body:        body,
@@ -140,13 +140,13 @@ func parseOKFConcept(id string, r io.Reader, sourcePath string) (*OKFConcept, er
 	return c, nil
 }
 
-func parseOKFReservedFile(path, name string) (*OKFReservedFile, error) {
+func parseReservedFile(path, name string) (*ReservedFile, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	body := normalizeNewlines(string(b))
-	var fields []OKFField
+	var fields []Field
 	if strings.HasPrefix(body, "---\n") {
 		var rest string
 		fields, rest, err = parseFrontMatter(body)
@@ -155,10 +155,10 @@ func parseOKFReservedFile(path, name string) (*OKFReservedFile, error) {
 		}
 		body = rest
 	}
-	return &OKFReservedFile{Name: name, Body: strings.TrimSpace(body), FrontMatter: fields, Metadata: Metadata{Version: "0.1", Format: "okf-reserved", SourcePath: path}}, nil
+	return &ReservedFile{Name: name, Body: strings.TrimSpace(body), FrontMatter: fields, Metadata: Metadata{Version: "0.1", Format: "okf-reserved", SourcePath: path}}, nil
 }
 
-func parseFrontMatter(text string) ([]OKFField, string, error) {
+func parseFrontMatter(text string) ([]Field, string, error) {
 	text = normalizeNewlines(text)
 	if !strings.HasPrefix(text, "---\n") {
 		return nil, "", fmt.Errorf("missing frontmatter")
@@ -184,8 +184,8 @@ func parseFrontMatter(text string) ([]OKFField, string, error) {
 	return fields, strings.TrimSpace(body), nil
 }
 
-func parseFrontMatterFields(text string) ([]OKFField, error) {
-	var fields []OKFField
+func parseFrontMatterFields(text string) ([]Field, error) {
+	var fields []Field
 	for lineNo, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -212,10 +212,10 @@ func parseFrontMatterFields(text string) ([]OKFField, error) {
 		}
 		// A key with no inline value may introduce a block-style list.
 		if strings.TrimSpace(raw) == "" {
-			fields = append(fields, OKFField{Key: key})
+			fields = append(fields, Field{Key: key})
 			continue
 		}
-		fields = append(fields, OKFField{Key: key, Values: parseFrontMatterValue(raw)})
+		fields = append(fields, Field{Key: key, Values: parseFrontMatterValue(raw)})
 	}
 	return fields, nil
 }
@@ -259,7 +259,7 @@ func firstValue(values []string) string {
 	return values[0]
 }
 
-func fieldValue(fields []OKFField, name string) string {
+func fieldValue(fields []Field, name string) string {
 	for _, field := range fields {
 		if strings.EqualFold(field.Key, name) {
 			return firstValue(field.Values)

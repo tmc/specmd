@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tmc/openspec"
+	"github.com/tmc/specmd/openspec"
 )
 
 func Example() {
@@ -143,20 +143,6 @@ func ExampleExtensionRef() {
 	// opportunity-tree/auth
 	// service-blueprint/login
 	// ooux
-}
-
-func ExampleParseOKFBundle() {
-	bundle, err := openspec.ParseOKFBundle(filepath.Join("testdata", "okf"))
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(len(bundle.Concepts))
-	fmt.Println(bundle.Concepts[0].ID)
-	fmt.Println(bundle.Concepts[0].Type)
-	// Output:
-	// 2
-	// datasets/sales
-	// BigQuery Dataset
 }
 
 func ExampleValidateSpec() {

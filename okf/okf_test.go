@@ -1,14 +1,16 @@
-package openspec
+package okf
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/tmc/specmd/validation"
 )
 
 func TestParseOKFBundle(t *testing.T) {
-	bundle, err := ParseOKFBundle("testdata/okf")
+	bundle, err := ParseBundle("testdata/okf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,11 +55,11 @@ func TestValidateOKFReservedFiles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	bundle, err := ParseOKFBundle(dir)
+	bundle, err := ParseBundle(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	report := ValidateOKFBundleReport(bundle)
+	report := ValidateBundleReport(bundle)
 	for _, want := range []string{
 		"frontmatter is only permitted in root index.md",
 		"should contain at least one linked list entry",
@@ -75,8 +77,8 @@ func TestValidateOKFReservedFiles(t *testing.T) {
 }
 
 func TestValidateOKFLogDateHeadingFormat(t *testing.T) {
-	report := ValidateOKFBundleReport(&OKFBundle{
-		Logs: []OKFReservedFile{{
+	report := ValidateBundleReport(&Bundle{
+		Logs: []ReservedFile{{
 			Name: "log.md",
 			Body: "# Directory Update Log\n\n## 2026/5/28\n\n* Created.\n",
 		}},
@@ -90,7 +92,7 @@ func TestValidateOKFLogDateHeadingFormat(t *testing.T) {
 }
 
 func TestParseOKFConcept(t *testing.T) {
-	concept, err := ParseOKFConcept("metrics/weekly_active_users", strings.NewReader(`---
+	concept, err := ParseConcept("metrics/weekly_active_users", strings.NewReader(`---
 type: Metric
 title: Weekly active users
 description: Count of unique active users per week.
@@ -117,7 +119,7 @@ Users active in a seven-day window.
 }
 
 func TestParseOKFConceptBlockListTags(t *testing.T) {
-	concept, err := ParseOKFConcept("metrics/wau", strings.NewReader(`---
+	concept, err := ParseConcept("metrics/wau", strings.NewReader(`---
 type: Metric
 title: Weekly active users
 tags:
@@ -148,9 +150,9 @@ func TestParseOKFBundleTolerantOfBadConcept(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "bad.md"), []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	bundle, err := ParseOKFBundle(dir)
+	bundle, err := ParseBundle(dir)
 	if err != nil {
-		t.Fatalf("ParseOKFBundle returned error for a malformed concept: %v", err)
+		t.Fatalf("ParseBundle returned error for a malformed concept: %v", err)
 	}
 	if len(bundle.Concepts) != 1 || bundle.Concepts[0].ID != "good" {
 		t.Fatalf("Concepts = %+v, want one with ID good", bundle.Concepts)
@@ -158,7 +160,7 @@ func TestParseOKFBundleTolerantOfBadConcept(t *testing.T) {
 	if len(bundle.Invalid) != 1 || bundle.Invalid[0].ID != "bad" {
 		t.Fatalf("Invalid = %+v, want one with ID bad", bundle.Invalid)
 	}
-	report := ValidateOKFBundleReport(bundle)
+	report := ValidateBundleReport(bundle)
 	if report.Valid || report.Summary.Errors == 0 {
 		t.Fatalf("bundle with a bad concept should report errors: %+v", report.Issues)
 	}
@@ -176,30 +178,30 @@ func TestParseOKFConceptFrontmatterErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseOKFConcept("x", strings.NewReader(tt.input))
+			_, err := ParseConcept("x", strings.NewReader(tt.input))
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("ParseOKFConcept error = %v, want %q", err, tt.want)
+				t.Fatalf("ParseConcept error = %v, want %q", err, tt.want)
 			}
 		})
 	}
 }
 
 func TestValidateOKFConceptReport(t *testing.T) {
-	concept := &OKFConcept{ID: "metrics/wau", Type: "Metric"}
-	report := ValidateOKFConceptReport(concept)
+	concept := &Concept{ID: "metrics/wau", Type: "Metric"}
+	report := ValidateConceptReport(concept)
 	if !report.Valid {
 		t.Fatalf("Valid = false: %+v", report.Issues)
 	}
 	if report.Summary.Info != 2 {
 		t.Fatalf("Info = %d, want 2: %+v", report.Summary.Info, report.Issues)
 	}
-	if err := ValidateOKFConcept(concept); err != nil {
+	if err := ValidateConcept(concept); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestValidateOKFConceptRequiresType(t *testing.T) {
-	report := ValidateOKFConceptReport(&OKFConcept{ID: "metrics/wau"})
+	report := ValidateConceptReport(&Concept{ID: "metrics/wau"})
 	if report.Valid {
 		t.Fatalf("Valid = true, want false")
 	}
@@ -208,7 +210,7 @@ func TestValidateOKFConceptRequiresType(t *testing.T) {
 	}
 }
 
-func hasIssue(report ValidationReport, msg string) bool {
+func hasIssue(report validation.Report, msg string) bool {
 	for _, issue := range report.Issues {
 		if strings.Contains(issue.Message, msg) {
 			return true
