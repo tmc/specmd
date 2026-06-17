@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -279,7 +280,9 @@ func hasFrontMatter(path string) bool {
 		return false
 	}
 	defer f.Close()
-	buf := make([]byte, 4)
-	n, _ := f.Read(buf)
-	return strings.HasPrefix(strings.ReplaceAll(string(buf[:n]), "\r\n", "\n"), "---\n")
+	line, err := bufio.NewReader(f).ReadString('\n')
+	if err != nil && err != io.EOF {
+		return false
+	}
+	return strings.TrimRight(line, "\r\n") == "---"
 }
