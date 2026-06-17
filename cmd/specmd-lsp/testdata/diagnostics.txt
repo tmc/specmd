@@ -1,5 +1,5 @@
 lsp session.jsonl
-stdout '"name":"openspec-lsp"'
+stdout '"name":"specmd-lsp"'
 stdout '"method":"textDocument/publishDiagnostics"'
 stdout 'missing ## Story section'
 stdout 'missing ## Questions section'

@@ -43,10 +43,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: openspec command [args]")
+	fmt.Fprintln(w, "usage: specmd command [args]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "commands:")
-	fmt.Fprintln(w, "  validate [path]   validate an openspec or OKF path")
+	fmt.Fprintln(w, "  validate [path]   validate an OpenSpec or OKF path")
 	fmt.Fprintln(w, "  lsp               run stdio language server")
 }
 

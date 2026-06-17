@@ -76,7 +76,7 @@ func (s *Server) handle(req request) error {
 				},
 				"hoverProvider": true,
 			},
-			"serverInfo": map[string]string{"name": "openspec-lsp"},
+			"serverInfo": map[string]string{"name": "specmd-lsp"},
 		})
 	case "shutdown":
 		return s.respond(req.ID, nil)

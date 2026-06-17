@@ -20,9 +20,9 @@ import (
 )
 
 func TestScripts(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "openspec-lsp")
+	bin := filepath.Join(t.TempDir(), "specmd-lsp")
 	if err := exec.Command("go", "build", "-o", bin, ".").Run(); err != nil {
-		t.Fatalf("build openspec-lsp: %v", err)
+		t.Fatalf("build specmd-lsp: %v", err)
 	}
 
 	cmds := scripttest.DefaultCmds()
@@ -33,7 +33,7 @@ func TestScripts(t *testing.T) {
 
 func lspCmd(bin string) script.Cmd {
 	return script.Command(
-		script.CmdUsage{Summary: "run openspec-lsp with newline-delimited JSON messages", Args: "file"},
+		script.CmdUsage{Summary: "run specmd-lsp with newline-delimited JSON messages", Args: "file"},
 		func(s *script.State, args ...string) (script.WaitFunc, error) {
 			if len(args) != 1 {
 				return nil, script.ErrUsage
