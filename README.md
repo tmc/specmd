@@ -29,3 +29,31 @@ for _, ref := range project.Extensions {
 	fmt.Println(ref.Name, ref.SourcePath)
 }
 ```
+
+OKF parsing reads Open Knowledge Format v0.1 bundles as Markdown concept files
+with YAML front matter:
+
+```go
+bundle, err := openspec.ParseOKFBundle("testdata/okf")
+if err != nil {
+	log.Fatal(err)
+}
+if err := openspec.ValidateOKFBundle(bundle); err != nil {
+	log.Fatal(err)
+}
+```
+
+## CLI
+
+The `openspec` command provides small, deterministic operations over the Go
+package:
+
+```sh
+go run ./cmd/openspec validate openspec
+go run ./cmd/openspec validate -json openspec
+```
+
+`validate` accepts an openspec project directory, an OKF bundle directory, a
+`spec.md` file, an OKF concept file, or a change directory with `proposal.md`.
+Warnings and info are reported but do not fail the command unless `-strict` is
+set.
