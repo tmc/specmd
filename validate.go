@@ -3,6 +3,7 @@ package openspec
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -133,6 +134,145 @@ func ValidateChangeReport(change *Change) ValidationReport {
 		issues = append(issues, validateDeltaIssues(fmt.Sprintf("deltas[%d]", i), change.Deltas[i])...)
 	}
 	return validationReport(issues)
+}
+
+// ValidateOKFConcept checks the hard OKF v0.1 concept document rules.
+func ValidateOKFConcept(concept *OKFConcept) error {
+	if concept == nil {
+		return fmt.Errorf("validate okf concept: nil concept")
+	}
+	if err := ValidateOKFConceptReport(concept).Err(); err != nil {
+		return fmt.Errorf("validate okf concept: %w", err)
+	}
+	return nil
+}
+
+// ValidateOKFConceptReport checks an OKF concept and returns errors plus warnings.
+func ValidateOKFConceptReport(concept *OKFConcept) ValidationReport {
+	if concept == nil {
+		return validationReport([]ValidationIssue{{ValidationLevelError, "concept", "cannot be nil"}})
+	}
+	var issues []ValidationIssue
+	if strings.TrimSpace(concept.ID) == "" {
+		issues = append(issues, ValidationIssue{ValidationLevelError, "id", "cannot be empty"})
+	}
+	if strings.TrimSpace(concept.Type) == "" {
+		issues = append(issues, ValidationIssue{ValidationLevelError, "type", "cannot be empty"})
+	}
+	if strings.TrimSpace(concept.Title) == "" {
+		issues = append(issues, ValidationIssue{ValidationLevelInfo, "title", "recommended field is missing"})
+	}
+	if strings.TrimSpace(concept.Description) == "" {
+		issues = append(issues, ValidationIssue{ValidationLevelInfo, "description", "recommended field is missing"})
+	}
+	return validationReport(issues)
+}
+
+// ValidateOKFBundle checks the hard OKF v0.1 bundle rules.
+func ValidateOKFBundle(bundle *OKFBundle) error {
+	if bundle == nil {
+		return fmt.Errorf("validate okf bundle: nil bundle")
+	}
+	if err := ValidateOKFBundleReport(bundle).Err(); err != nil {
+		return fmt.Errorf("validate okf bundle: %w", err)
+	}
+	return nil
+}
+
+// ValidateOKFBundleReport checks an OKF bundle and returns errors plus warnings.
+func ValidateOKFBundleReport(bundle *OKFBundle) ValidationReport {
+	if bundle == nil {
+		return validationReport([]ValidationIssue{{ValidationLevelError, "bundle", "cannot be nil"}})
+	}
+	var issues []ValidationIssue
+	for i := range bundle.Concepts {
+		report := ValidateOKFConceptReport(&bundle.Concepts[i])
+		issues = append(issues, prefixValidationIssues("concepts."+bundle.Concepts[i].ID, report.Issues)...)
+	}
+	for _, bad := range bundle.Invalid {
+		issues = append(issues, ValidationIssue{ValidationLevelError, "concepts." + bad.ID, "unparseable frontmatter: " + bad.Err.Error()})
+	}
+	for i := range bundle.Index {
+		issues = append(issues, validateOKFIndexIssues(fmt.Sprintf("index[%d]", i), bundle.Index[i])...)
+	}
+	for i := range bundle.Logs {
+		issues = append(issues, validateOKFLogIssues(fmt.Sprintf("logs[%d]", i), bundle.Logs[i])...)
+	}
+	return validationReport(issues)
+}
+
+func validateOKFIndexIssues(path string, file OKFReservedFile) []ValidationIssue {
+	var issues []ValidationIssue
+	if len(file.FrontMatter) > 0 && !file.Root {
+		issues = append(issues, ValidationIssue{ValidationLevelError, path, "frontmatter is only permitted in root index.md"})
+	}
+	if !hasMarkdownHeading(file.Body, "# ") {
+		issues = append(issues, ValidationIssue{ValidationLevelWarning, path, "should contain at least one section heading"})
+	}
+	if !hasMarkdownListLink(file.Body) {
+		issues = append(issues, ValidationIssue{ValidationLevelWarning, path, "should contain at least one linked list entry"})
+	}
+	return issues
+}
+
+func validateOKFLogIssues(path string, file OKFReservedFile) []ValidationIssue {
+	var issues []ValidationIssue
+	if len(file.FrontMatter) > 0 {
+		issues = append(issues, ValidationIssue{ValidationLevelError, path, "log.md must not contain frontmatter"})
+	}
+	if !hasMarkdownHeading(file.Body, "# ") {
+		issues = append(issues, ValidationIssue{ValidationLevelWarning, path, "should contain a title heading"})
+	}
+	for _, bad := range malformedDateHeadings(file.Body) {
+		issues = append(issues, ValidationIssue{ValidationLevelError, path, "date heading must use ISO 8601 form: " + bad})
+	}
+	return issues
+}
+
+func hasMarkdownHeading(text, prefix string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasMarkdownListLink(text string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if (strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "- ")) && strings.Contains(line, "](") {
+			return true
+		}
+	}
+	return false
+}
+
+var isoDateHeadingRE = regexp.MustCompile(`^## [0-9]{4}-[0-9]{2}-[0-9]{2}$`)
+var dateLikeHeadingRE = regexp.MustCompile(`^## [0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2}$`)
+
+func malformedDateHeadings(text string) []string {
+	var out []string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if dateLikeHeadingRE.MatchString(line) && !isoDateHeadingRE.MatchString(line) {
+			out = append(out, strings.TrimSpace(strings.TrimPrefix(line, "##")))
+		}
+	}
+	return out
+}
+
+func prefixValidationIssues(prefix string, issues []ValidationIssue) []ValidationIssue {
+	out := make([]ValidationIssue, len(issues))
+	for i, issue := range issues {
+		out[i] = issue
+		if issue.Path == "" {
+			out[i].Path = prefix
+		} else {
+			out[i].Path = prefix + "." + issue.Path
+		}
+	}
+	return out
 }
 
 func validateDeltaIssues(path string, delta Delta) []ValidationIssue {

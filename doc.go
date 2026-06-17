@@ -11,4 +11,9 @@
 // Project parsing also discovers extension Markdown artifacts under
 // extensions/ and changes/<name>/extensions/. Extensions are returned as
 // ExtensionRef values; the package does not parse extension payloads.
+//
+// OKF support parses Open Knowledge Format v0.1 bundles as Markdown concept
+// files with YAML frontmatter. Validation enforces the hard conformance rules
+// while treating optional fields, unknown types, unknown keys, and broken links
+// permissively.
 package openspec

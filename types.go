@@ -76,3 +76,52 @@ type Scenario struct {
 	Name    string
 	RawText string
 }
+
+// An OKFBundle is a parsed Open Knowledge Format bundle.
+type OKFBundle struct {
+	Root     string
+	Version  string
+	Concepts []OKFConcept
+	Invalid  []OKFInvalidConcept
+	Index    []OKFReservedFile
+	Logs     []OKFReservedFile
+	Metadata Metadata
+}
+
+// An OKFInvalidConcept records a concept document whose frontmatter could
+// not be parsed. ParseOKFBundle keeps these rather than failing the whole
+// bundle; ValidateOKFBundle reports each as a conformance error.
+type OKFInvalidConcept struct {
+	ID         string
+	SourcePath string
+	Err        error
+}
+
+// An OKFConcept is one OKF concept document.
+type OKFConcept struct {
+	ID          string
+	Type        string
+	Title       string
+	Description string
+	Resource    string
+	Tags        []string
+	Timestamp   string
+	FrontMatter []OKFField
+	Body        string
+	Metadata    Metadata
+}
+
+// An OKFField is one frontmatter field.
+type OKFField struct {
+	Key    string
+	Values []string
+}
+
+// An OKFReservedFile is a reserved OKF index.md or log.md file.
+type OKFReservedFile struct {
+	Name        string
+	Body        string
+	FrontMatter []OKFField
+	Root        bool
+	Metadata    Metadata
+}
