@@ -241,10 +241,10 @@ Useful editor checks:
 | `textDocument/didOpen` | now | stores open Markdown documents; open buffers override indexed files |
 | `textDocument/didChange` | now | full-text sync and index refresh |
 | `textDocument/didClose` | now | clears diagnostics |
-| `textDocument/publishDiagnostics` | now | section, heading, validation, and graph-quality diagnostics |
+| `textDocument/publishDiagnostics` | now | section, heading, validation, OKF concept, and graph-quality diagnostics |
 | `textDocument/documentSymbol` | now | Markdown headings |
-| `textDocument/completion` | now | sections, snippets, fields, extension blocks, indexed link/object names |
-| `textDocument/hover` | now | known sections, extension families, and indexed OOUX object details |
+| `textDocument/completion` | now | sections, snippets, fields, extension blocks, OKF front-matter keys, indexed link/object names |
+| `textDocument/hover` | now | known sections, extension families, OKF concept summaries, and indexed OOUX object details |
 | `textDocument/definition` | now | workspace Markdown/wiki links and known object names |
 | `textDocument/references` | now | workspace Markdown/wiki links and known object references |
 | `textDocument/rename` | now | OOUX object names and explicit link targets with conservative workspace edits |
@@ -278,6 +278,14 @@ Current behavior:
 - completion also suggests indexed Markdown files/headings while typing links
   and known OOUX objects, domains, statuses, and Markdown tags in appropriate
   contexts
+- OKF concept documents (front-matter Markdown files outside the OpenSpec spec,
+  change, and extension trees, excluding reserved `index.md`/`log.md`) report
+  the Open Knowledge Format v0.1 conformance issues: a hard error for a missing
+  `type` and advisories for missing `title`/`description`, anchored on the
+  relevant front-matter line
+- completion offers OKF concept front-matter keys (`type`, `title`,
+  `description`, `resource`, `tags`, `timestamp`) while editing front matter,
+  and hover summarizes the concept's type and recognized fields
 - document symbols are Markdown headings
 - hover describes known sections, the document extension family, or an indexed
   OOUX object with its catalog definition/status/domain when available

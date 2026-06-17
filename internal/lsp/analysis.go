@@ -31,6 +31,7 @@ func analyze(uri, text string) []diagnostic {
 	diags = append(diags, requireSections(heads, requiredSections(uri)...)...)
 	diags = append(diags, headingWhitespaceDiagnostics(text)...)
 	diags = append(diags, validationDiagnostics(uri, text, diags)...)
+	diags = append(diags, okfDiagnostics(uri, text)...)
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Range.Start.Line != diags[j].Range.Start.Line {
 			return diags[i].Range.Start.Line < diags[j].Range.Start.Line
@@ -264,6 +265,9 @@ func (s *Server) completions(uri, text string, pos position) []completionItem {
 	labels := make(map[string]bool)
 	for _, item := range items {
 		labels[item.Label] = true
+	}
+	for _, item := range okfCompletions(uri, text, pos) {
+		items = appendCompletion(items, labels, item)
 	}
 	for _, item := range s.indexCompletions(uri, text, pos) {
 		items = appendCompletion(items, labels, item)
@@ -542,6 +546,11 @@ func (s *Server) hoverAt(uri, text string, pos position) string {
 				return row.Canon + "\n\n" + row.Detail + extra + "\n\nSource: " + path.Base(row.URI)
 			}
 			return sym.Canon + "\n\nSource: " + path.Base(sym.URI)
+		}
+	}
+	if inFrontMatter(text, pos.Line) {
+		if h := okfHover(uri, text); h != "" {
+			return h
 		}
 	}
 	if meta := s.indexMeta(uri); len(meta) > 0 && pos.Line < 6 {
