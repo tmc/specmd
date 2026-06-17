@@ -1,0 +1,9 @@
+commit: 0fb5baee2f340e24ed04b6a6f5048feb1234fa41
+date: 2026-06-17T19:27:09Z
+claude-code: 2.1.170 (Claude Code)
+model: claude-opus-4-8[1m]
+tty: not a tty
+not a tty
+pid: 59196
+iterm_session_id: w8t3p2:86E1AB10-7F64-4E1C-900C-6AB958F7A8A6
+note: go-team-codebase-review finding #4 (CRLF frontmatter sniff), triaged + fixed
