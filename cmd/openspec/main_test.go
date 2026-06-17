@@ -118,6 +118,23 @@ Body.
 	}
 }
 
+func TestValidateOKFConceptCRLF(t *testing.T) {
+	// A concept file with Windows CRLF newlines must still be detected as
+	// frontmatter and routed to OKF concept validation, not the spec parser.
+	path := writeSpec(t, "metric.md", "---\r\ntype: Metric\r\ntitle: CRLF\r\n---\r\n\r\nBody.\r\n")
+	var out, err bytes.Buffer
+	if e := run([]string{"validate", "-json", path}, &out, &err); e != nil {
+		t.Fatalf("run = %v, stderr=%q", e, err.String())
+	}
+	var result validationResult
+	if e := json.Unmarshal(out.Bytes(), &result); e != nil {
+		t.Fatalf("json: %v\n%s", e, out.String())
+	}
+	if result.Kind != "okf-concept" {
+		t.Fatalf("Kind = %q, want okf-concept", result.Kind)
+	}
+}
+
 func TestValidationReportSummary(t *testing.T) {
 	report := validationReport([]openspec.ValidationIssue{
 		{Level: openspec.ValidationLevelError},
