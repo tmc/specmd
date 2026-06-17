@@ -1,0 +1,11 @@
+id = "specmd-lsp"
+name = "specmd LSP"
+description = "Structured-Markdown diagnostics, completions, hover, symbols, definitions, and references for OpenSpec and OKF."
+version = "0.1.0"
+schema_version = 1
+authors = ["tmc"]
+repository = "https://github.com/tmc/specmd"
+
+[language_servers.specmd-lsp]
+name = "specmd LSP"
+languages = ["Markdown"]

@@ -1,7 +1,7 @@
 {
   "languages": {
     "Markdown": {
-      "language_servers": ["openspec-lsp", "..."]
+      "language_servers": ["specmd-lsp", "..."]
     }
   }
 }

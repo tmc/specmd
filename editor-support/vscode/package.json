@@ -1,0 +1,64 @@
+{
+  "name": "specmd-lsp-vscode",
+  "displayName": "specmd LSP",
+  "description": "Structured-Markdown diagnostics, completions, hover, symbols, links, and code actions for OpenSpec and OKF.",
+  "version": "0.1.0",
+  "publisher": "tmc",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onCommand:specmd.validateProject",
+    "onCommand:specmd.insertRequirement",
+    "onCommand:specmd.openExtensionModel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "specmd",
+      "properties": {
+        "specmd.lsp.path": {
+          "type": "string",
+          "default": "specmd-lsp",
+          "description": "Path to the specmd-lsp binary."
+        },
+        "specmd.lsp.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Trace communication with specmd-lsp."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "specmd.validateProject",
+        "title": "specmd: Validate Project"
+      },
+      {
+        "command": "specmd.insertRequirement",
+        "title": "specmd: Insert Requirement"
+      },
+      {
+        "command": "specmd.openExtensionModel",
+        "title": "specmd: Open Extension Model"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "check": "tsc -p ./ --noEmit"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.0"
+  }
+}

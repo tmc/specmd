@@ -1,27 +1,26 @@
 [
   {
-    "label": "openspec: validate current file",
+    "label": "specmd: validate current file",
     "command": "go test ./...",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   },
   {
-    "label": "openspec: validate project",
+    "label": "specmd: validate project",
     "command": "go test ./...",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   },
   {
-    "label": "openspec: test lsp",
-    "command": "go test ./cmd/openspec-lsp",
+    "label": "specmd: test lsp",
+    "command": "go test ./cmd/specmd-lsp",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   },
   {
-    "label": "openspec: test all",
+    "label": "specmd: test all",
     "command": "go test ./...",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   }
 ]
-

@@ -4,15 +4,15 @@ import { LanguageClient, LanguageClientOptions, ServerOptions, Trace } from "vsc
 let client: LanguageClient | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  const config = vscode.workspace.getConfiguration("openspec");
-  const command = config.get<string>("lsp.path") || "openspec-lsp";
+  const config = vscode.workspace.getConfiguration("specmd");
+  const command = config.get<string>("lsp.path") || "specmd-lsp";
   const serverOptions: ServerOptions = { command, args: [] };
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "markdown" }],
     synchronize: {},
   };
 
-  client = new LanguageClient("openspec-lsp", "OpenSpec LSP", serverOptions, clientOptions);
+  client = new LanguageClient("specmd-lsp", "specmd LSP", serverOptions, clientOptions);
   const trace = config.get<string>("lsp.trace.server") || "off";
   if (trace === "messages") {
     client.setTrace(Trace.Messages);
@@ -22,11 +22,11 @@ export function activate(context: vscode.ExtensionContext) {
   void client.start();
   context.subscriptions.push({ dispose: () => { void client?.stop(); } });
 
-  context.subscriptions.push(vscode.commands.registerCommand("openspec.validateProject", async () => {
+  context.subscriptions.push(vscode.commands.registerCommand("specmd.validateProject", async () => {
     await vscode.commands.executeCommand("workbench.action.problems.focus");
   }));
-  context.subscriptions.push(vscode.commands.registerCommand("openspec.insertRequirement", insertRequirement));
-  context.subscriptions.push(vscode.commands.registerCommand("openspec.openExtensionModel", openExtensionModel));
+  context.subscriptions.push(vscode.commands.registerCommand("specmd.insertRequirement", insertRequirement));
+  context.subscriptions.push(vscode.commands.registerCommand("specmd.openExtensionModel", openExtensionModel));
 }
 
 export function deactivate(): Thenable<void> | undefined {

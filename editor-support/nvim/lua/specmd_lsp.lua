@@ -15,7 +15,7 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  local cmd = opts.cmd or { "openspec-lsp" }
+  local cmd = opts.cmd or { "specmd-lsp" }
   vim.api.nvim_create_autocmd("FileType", {
     pattern = "markdown",
     callback = function(args)
@@ -24,7 +24,7 @@ function M.setup(opts)
         return
       end
       vim.lsp.start({
-        name = "openspec-lsp",
+        name = "specmd-lsp",
         cmd = cmd,
         root_dir = root,
         capabilities = opts.capabilities,

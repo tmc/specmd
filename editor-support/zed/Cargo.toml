@@ -1,5 +1,5 @@
 [package]
-name = "openspec-lsp-zed"
+name = "specmd-lsp-zed"
 version = "0.1.0"
 edition = "2021"
 

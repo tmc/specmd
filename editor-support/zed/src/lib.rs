@@ -1,8 +1,8 @@
 use zed_extension_api::{self as zed, settings::LspSettings, LanguageServerId, Result};
 
-struct OpenSpecExtension;
+struct SpecmdExtension;
 
-impl zed::Extension for OpenSpecExtension {
+impl zed::Extension for SpecmdExtension {
     fn new() -> Self {
         Self
     }
@@ -18,8 +18,8 @@ impl zed::Extension for OpenSpecExtension {
         let command = binary
             .as_ref()
             .and_then(|binary| binary.path.as_ref().map(|path| path.to_string()))
-            .or_else(|| worktree.which("openspec-lsp"))
-            .ok_or_else(|| "openspec-lsp not found; run go install ./cmd/openspec-lsp or set lsp.openspec-lsp.binary.path".to_string())?;
+            .or_else(|| worktree.which("specmd-lsp"))
+            .ok_or_else(|| "specmd-lsp not found; run go install ./cmd/specmd-lsp or set lsp.specmd-lsp.binary.path".to_string())?;
         let args = binary
             .and_then(|binary| binary.arguments)
             .unwrap_or_default();
@@ -32,4 +32,4 @@ impl zed::Extension for OpenSpecExtension {
     }
 }
 
-zed::register_extension!(OpenSpecExtension);
+zed::register_extension!(SpecmdExtension);
