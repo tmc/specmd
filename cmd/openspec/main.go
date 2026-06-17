@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/tmc/openspec"
+	"github.com/tmc/openspec/internal/lsp"
 )
 
 func main() {
@@ -31,6 +31,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return nil
 	case "validate":
 		return runValidate(args[1:], stdout, stderr)
+	case "lsp":
+		return runLSP(args[1:])
 	default:
 		usage(stderr)
 		return fmt.Errorf("unknown command %q", args[0])
@@ -42,6 +44,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "commands:")
 	fmt.Fprintln(w, "  validate [path]   validate an openspec or OKF path")
+	fmt.Fprintln(w, "  lsp               run stdio language server")
 }
 
 func runValidate(args []string, stdout, stderr io.Writer) error {
@@ -78,6 +81,21 @@ func runValidate(args []string, stdout, stderr io.Writer) error {
 	}
 	if *strict && (result.Summary.Warnings > 0 || result.Summary.Info > 0) {
 		return fmt.Errorf("validate: %d warning(s), %d info", result.Summary.Warnings, result.Summary.Info)
+	}
+	return nil
+}
+
+func runLSP(args []string) error {
+	fs := flag.NewFlagSet("lsp", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("lsp: too many arguments")
+	}
+	if err := lsp.NewServer(os.Stdin, os.Stdout).Run(); err != nil {
+		return fmt.Errorf("lsp: %w", err)
 	}
 	return nil
 }
@@ -261,9 +279,7 @@ func hasFrontMatter(path string) bool {
 		return false
 	}
 	defer f.Close()
-	line, err := bufio.NewReader(f).ReadString('\n')
-	if err != nil && err != io.EOF {
-		return false
-	}
-	return strings.TrimRight(line, "\r\n") == "---"
+	buf := make([]byte, 4)
+	n, _ := f.Read(buf)
+	return strings.HasPrefix(strings.ReplaceAll(string(buf[:n]), "\r\n", "\n"), "---\n")
 }

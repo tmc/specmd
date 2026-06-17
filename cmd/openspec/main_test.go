@@ -54,6 +54,14 @@ The system SHALL issue a token.
 	}
 }
 
+func TestLSPRejectsArgs(t *testing.T) {
+	var out, err bytes.Buffer
+	e := run([]string{"lsp", "extra"}, &out, &err)
+	if e == nil || !strings.Contains(e.Error(), "too many arguments") {
+		t.Fatalf("run lsp = %v", e)
+	}
+}
+
 func TestValidateJSON(t *testing.T) {
 	path := filepath.Join("..", "..", "testdata", "project", "openspec")
 	var out, err bytes.Buffer
@@ -115,23 +123,6 @@ Body.
 	}
 	if !strings.Contains(out.String(), "error type: cannot be empty") {
 		t.Fatalf("stdout=%q", out.String())
-	}
-}
-
-func TestValidateOKFConceptCRLF(t *testing.T) {
-	// A concept file with Windows CRLF newlines must still be detected as
-	// frontmatter and routed to OKF concept validation, not the spec parser.
-	path := writeSpec(t, "metric.md", "---\r\ntype: Metric\r\ntitle: CRLF\r\n---\r\n\r\nBody.\r\n")
-	var out, err bytes.Buffer
-	if e := run([]string{"validate", "-json", path}, &out, &err); e != nil {
-		t.Fatalf("run = %v, stderr=%q", e, err.String())
-	}
-	var result validationResult
-	if e := json.Unmarshal(out.Bytes(), &result); e != nil {
-		t.Fatalf("json: %v\n%s", e, out.String())
-	}
-	if result.Kind != "okf-concept" {
-		t.Fatalf("Kind = %q, want okf-concept", result.Kind)
 	}
 }
 

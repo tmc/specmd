@@ -51,6 +51,7 @@ package:
 ```sh
 go run ./cmd/openspec validate openspec
 go run ./cmd/openspec validate -json openspec
+go run ./cmd/openspec lsp
 ```
 
 `validate` accepts an openspec project directory, an OKF bundle directory, a
