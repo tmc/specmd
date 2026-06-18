@@ -344,7 +344,7 @@ func specFiles(root string) ([]namedPath, error) {
 		path := filepath.Join(root, entry.Name(), "spec.md")
 		if _, err := os.Stat(path); err == nil {
 			files = append(files, namedPath{entry.Name(), path})
-		} else if err != nil && !os.IsNotExist(err) {
+		} else if !os.IsNotExist(err) {
 			return nil, err
 		}
 	}
@@ -372,7 +372,7 @@ func changeDirs(root string) ([]string, error) {
 		path := filepath.Join(root, entry.Name())
 		if _, err := os.Stat(filepath.Join(path, "proposal.md")); err == nil {
 			dirs = append(dirs, path)
-		} else if err != nil && !os.IsNotExist(err) {
+		} else if !os.IsNotExist(err) {
 			return nil, err
 		}
 	}
