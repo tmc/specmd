@@ -370,25 +370,7 @@ projects:
   server, so the Zed extension attaches this Go server for semantic features:
   <https://zed.dev/docs/languages/markdown>.
 
-## Axion OOUX Demo
-
-Open `/Users/tmc/go/src/github.com/EternisAI/tmc-personal-notes/axion-ooux-spec`
-as the workspace. Expected checks:
-
-- go-to-definition on `Variant` in `00-object-catalog.md` jumps to
-  `objects/t6-quality-and-self-improvement.md`
-- go-to-definition on
-  `[cross-tier object map](../00-object-catalog.md#cross-tier-object-map)` in
-  `matrices/relationship-map.md` jumps to the catalog heading
-- references for `Variant` include the catalog, matrices, object detail file,
-  and other structured mentions
-- workspace symbols find `Variant`, `Forecast`, and `Thread`
-- document links in `INDEX.md` target local Markdown files
-- rename on `Variant` produces edits in the catalog, object card, and matrices
-- reference counts appear for object headings in clients that show code lens or
-  inlay hints
-- graph diagnostics avoid irrelevant external URL checks and focus on local
-  Markdown/spec navigation issues
+## Roadmap
 
 Useful later:
 
